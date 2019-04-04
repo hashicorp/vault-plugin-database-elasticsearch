@@ -63,7 +63,7 @@ $ curl \
 The contents of `data.json` in this example are:
 ```
 {
- "password" : <replace>,
+ "password" : "<replace>",
  "roles" : [ "vault" ],
  "full_name" : "Hashicorp Vault",
  "metadata" : {
