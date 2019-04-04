@@ -12,7 +12,7 @@ To use it, you may need to enable a 30-day trial with Elasticsearch, or activate
 Read [Securing the Elastic Stack](https://www.elastic.co/guide/en/elastic-stack-overview/6.6/elasticsearch-security.html) and 
 follow [its instructions for enabling X-Pack Security](https://www.elastic.co/guide/en/elasticsearch/reference/6.6/setup-xpack.html). 
 When done, verify that you've enabled X-Pack by running `$ $ES_HOME/bin/elasticsearch-setup-passwords interactive`. You'll
-know its been set up successfully if it takes you through a number of password-inputting steps.
+know it's been set up successfully if it takes you through a number of password-inputting steps.
 
 ### Recommended: Enable Encrypted Communications
 
@@ -20,7 +20,7 @@ This plugin communicates with Elasticsearch's security API. We recommend you ena
 encrypted.
 
 To set up TLS in Elasticsearch, first read [encrypted communications](https://www.elastic.co/guide/en/elastic-stack-overview/6.6/encrypting-communications.html)
-and and go through its instructions on [encrypting HTTP client communications](https://www.elastic.co/guide/en/elasticsearch/reference/6.6/configuring-tls.html#tls-http). 
+and go through its instructions on [encrypting HTTP client communications](https://www.elastic.co/guide/en/elasticsearch/reference/6.6/configuring-tls.html#tls-http). 
 
 After enabling TLS on the Elasticsearch side, you'll need to convert the .p12 certificates you generated to other formats so they can be 
 used by Vault. [Here is an example using OpenSSL](https://stackoverflow.com/questions/15144046/converting-pkcs12-certificate-into-pem-using-openssl) 
@@ -39,7 +39,7 @@ environment. Describing every operating environment is outside the scope of thes
 Next, in Elasticsearch, we recommend that you create a user just for Vault to use in managing secrets.
 
 To do this, first create a role that will allow Vault the minimum privileges needed to administer users and passwords by performing a
-POST to ElasticSearch. To do this, we used the `elastic` superuser whose password we created in the
+POST to Elasticsearch. To do this, we used the `elastic` superuser whose password we created in the
 `$ $ES_HOME/bin/elasticsearch-setup-passwords interactive` step.
 
 ```
@@ -168,6 +168,6 @@ Register the plugin using
 
 ```
 vault write sys/plugins/catalog/vault-plugin-database-elasticsearch \
-    sha_256=<expected SHA256 Hex value of the plugin binary> \
+    sha256=<expected SHA256 Hex value of the plugin binary> \
     command="vault-plugin-database-elasticsearch"
 ```
