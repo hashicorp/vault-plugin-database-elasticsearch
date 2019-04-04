@@ -27,4 +27,4 @@ jobs:
 
     - run:
         name: "Run Build"
-        command: ./scripts/build.s
+        command: ./scripts/build.sh
