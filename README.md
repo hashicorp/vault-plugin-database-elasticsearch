@@ -23,7 +23,7 @@ To set up TLS in Elasticsearch, first read [encrypted communications](https://ww
 and and go through its instructions on [encrypting HTTP client communications](https://www.elastic.co/guide/en/elasticsearch/reference/6.6/configuring-tls.html#tls-http). 
 
 After enabling TLS on the Elasticsearch side, you'll need to convert the .p12 certificates you generated to other formats so they can be 
-used by Vault. On an Ubuntu system, we used [this method](https://stackoverflow.com/questions/15144046/converting-pkcs12-certificate-into-pem-using-openssl) 
+used by Vault. [Here is an example using OpenSSL](https://stackoverflow.com/questions/15144046/converting-pkcs12-certificate-into-pem-using-openssl) 
 to convert our .p12 certs to the pem format.
 
 Also, on the instance running Elasticsearch, we needed to install our newly generated CA certificate that was originally in the .p12 format.
@@ -39,32 +39,31 @@ environment. Describing every operating environment is outside the scope of thes
 Next, in Elasticsearch, we recommend that you create a user just for Vault to use in managing secrets.
 
 To do this, first create a role that will allow Vault the minimum privileges needed to administer users and passwords by performing a
-POST to ElasticSearch. The following example is in Python, and you'll need to replace "username" and "password" to real values,
-and also will need to replace "http://localhost:9200" with your ElasticSearch URL. For the username and password, we used the `elastic`
-username, which is the name for the built-in superuser, and the password that we set for that user previously in the 
+POST to ElasticSearch. To do this, we used the `elastic` superuser whose password we created in the
 `$ $ES_HOME/bin/elasticsearch-setup-passwords interactive` step.
+
 ```
->>> import requests
->>> import json
->>> headers = {'Content-Type': 'application/json'}
->>> body = {'cluster': ['manage_security']}
->>> r = requests.post('http://username:password@localhost:9200/_xpack/security/role/vault', headers=headers, data=json.dumps(body))
->>> r.status_code
-200
->>> r.content
-'{"role":{"created":true}}'
+$ curl \
+    -X POST \
+    -H "Content-Type: application/json" \
+    -d '{"cluster": ["manage_security"]}' \
+    http://elastic:$PASSWORD@localhost:9200/_xpack/security/role/vault
 ```
 
-Next, create a user for Vault associated with that role. You can choose any password you'd like, though in the example below we do 
-generate one at random. In the same Python terminal as before, continue with:
+Next, create a user for Vault associated with that role.
+
 ```
->>> import random
->>> import string
->>> password = ''.join([random.choice(string.ascii_letters + string.digits) for n in xrange(32)])
->>> password
-'dJTCIGtndaksCbHM7X6or7tGOuwzf1Qb' # your output will differ, record your output
->>> body = {
- "password" : password,
+$ curl \
+    -X POST \
+    -H "Content-Type: application/json" \
+    -d @data.json \
+    http://elastic:$PASSWORD@localhost:9200/_xpack/security/user/vault
+```
+
+The contents of `data.json` in this example are:
+```
+{
+ "password" : <replace>,
  "roles" : [ "vault" ],
  "full_name" : "Hashicorp Vault",
  "metadata" : {
@@ -72,11 +71,6 @@ generate one at random. In the same Python terminal as before, continue with:
    "plugin_url": "https://github.com/hashicorp/vault-plugin-secrets-elasticsearch"
  }
 }
->>> r = requests.post('http://username:password@localhost:9200/_xpack/security/user/vault', headers=headers, data=json.dumps(body))
->>> r.status_code
-200
->>> r.content
-'{"user":{"created":true},"created":true}'
 ```
 
 Now, Elasticsearch is configured and ready to be used with Vault.
