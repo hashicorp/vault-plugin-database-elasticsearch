@@ -174,6 +174,6 @@ Register the plugin using
 
 ```
 vault write sys/plugins/catalog/vault-plugin-database-elasticsearch \
-    sha_256=<expected SHA256 Hex value of the plugin binary> \
+    sha256=<expected SHA256 Hex value of the plugin binary> \
     command="vault-plugin-database-elasticsearch"
 ```
