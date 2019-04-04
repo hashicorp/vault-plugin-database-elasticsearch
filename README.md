@@ -12,7 +12,7 @@ To use it, you may need to enable a 30-day trial with Elasticsearch, or activate
 Read [Securing the Elastic Stack](https://www.elastic.co/guide/en/elastic-stack-overview/6.6/elasticsearch-security.html) and 
 follow [its instructions for enabling X-Pack Security](https://www.elastic.co/guide/en/elasticsearch/reference/6.6/setup-xpack.html). 
 When done, verify that you've enabled X-Pack by running `$ $ES_HOME/bin/elasticsearch-setup-passwords interactive`. You'll
-know its been set up successfully if it takes you through a number of password-inputting steps.
+know it's been set up successfully if it takes you through a number of password-inputting steps.
 
 ### Recommended: Enable Encrypted Communications
 
