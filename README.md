@@ -87,7 +87,7 @@ vault write database/config/my-elasticsearch-database \
     plugin_name="elasticsearch-database-plugin" \
     allowed_roles="internally-defined-role,externally-defined-role" \
     username=vault \
-    password=dJTCIGtndaksCbHM7X6or7tGOuwzf1Qb \
+    password=<replace> \
     url=http://localhost:9200 \
     ca_cert=/usr/share/ca-certificates/extra/elastic-stack-ca.crt \
     client_cert=$ES_HOME/config/certs/elastic-certificates.crt.pem \
