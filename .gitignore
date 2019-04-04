@@ -13,3 +13,7 @@
 
 # Jetbrains IDE
 .idea*
+
+# binaries and such
+bin/*
+pkg/*
