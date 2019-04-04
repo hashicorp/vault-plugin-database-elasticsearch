@@ -25,6 +25,18 @@
 #   unused-packages = true
 
 
+[[constraint]]
+  name = "github.com/cenkalti/backoff"
+  version = "2.1.1"
+
+[[constraint]]
+  name = "github.com/hashicorp/go-cleanhttp"
+  version = "0.5.1"
+
+[[constraint]]
+  name = "github.com/hashicorp/go-rootcerts"
+  version = "1.0.0"
+
 [prune]
   go-tests = true
   unused-packages = true
