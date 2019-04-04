@@ -40,7 +40,7 @@ Next, in Elasticsearch, we recommend that you create a user just for Vault to us
 
 To do this, first create a role that will allow Vault the minimum privileges needed to administer users and passwords by performing a
 POST to Elasticsearch. The following example is in Python, and you'll need to replace "username" and "password" to real values,
-and also will need to replace "http://localhost:9200" with your ElasticSearch URL. For the username and password, we used the `elastic`
+and also will need to replace "http://localhost:9200" with your Elasticsearch URL. For the username and password, we used the `elastic`
 username, which is the name for the built-in superuser, and the password that we set for that user previously in the 
 `$ $ES_HOME/bin/elasticsearch-setup-passwords interactive` step.
 ```
