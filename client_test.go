@@ -2,10 +2,12 @@ package elasticsearch
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/hashicorp/go-retryablehttp"
@@ -32,19 +34,25 @@ func TestClient_CreateListGetDeleteRole(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if err := client.CreateRole(ctx, "role-name", map[string]interface{}{
 		"cluster": []string{"manage_security"},
 	}); err != nil {
 		t.Fatal(err)
 	}
+
 	role, err := client.GetRole(ctx, "role-name")
 	if err != nil {
 		t.Fatal(err)
 	}
-	clusterValue := fmt.Sprintf("%s", role["cluster"])
-	if clusterValue != "[manage_security]" {
-		t.Fatalf("expected manage_security but received %s", clusterValue)
+	roleResponseBody := make(map[string]interface{})
+	if err := json.Unmarshal([]byte(fixtures.GetRoleResponse), &roleResponseBody); err != nil {
+		t.Fatal(err)
 	}
+	if !reflect.DeepEqual(roleResponseBody["role-name"], role) {
+		t.Fatalf("expected %s but received %s", roleResponseBody, role)
+	}
+
 	if err := client.DeleteRole(ctx, "role-name"); err != nil {
 		t.Fatal(err)
 	}
