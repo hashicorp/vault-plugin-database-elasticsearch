@@ -8,6 +8,7 @@ https://www.elastic.co/guide/en/elasticsearch/reference/6.6/security-api.html
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -92,7 +93,7 @@ type Client struct {
 
 // Role management
 
-func (c *Client) CreateRole(name string, role map[string]interface{}) error {
+func (c *Client) CreateRole(ctx context.Context, name string, role map[string]interface{}) error {
 	endpoint := "/_xpack/security/role/" + name
 	method := http.MethodPost
 
@@ -104,11 +105,11 @@ func (c *Client) CreateRole(name string, role map[string]interface{}) error {
 	if err != nil {
 		return err
 	}
-	return c.do(req, nil)
+	return c.do(ctx, req, nil)
 }
 
 // GetRole returns nil, nil if role is unfound.
-func (c *Client) GetRole(name string) (map[string]interface{}, error) {
+func (c *Client) GetRole(ctx context.Context, name string) (map[string]interface{}, error) {
 	endpoint := "/_xpack/security/role/" + name
 	method := http.MethodGet
 
@@ -117,13 +118,13 @@ func (c *Client) GetRole(name string) (map[string]interface{}, error) {
 		return nil, err
 	}
 	var roles map[string]map[string]interface{}
-	if err := c.do(req, &roles); err != nil {
+	if err := c.do(ctx, req, &roles); err != nil {
 		return nil, err
 	}
 	return roles[name], nil
 }
 
-func (c *Client) DeleteRole(name string) error {
+func (c *Client) DeleteRole(ctx context.Context, name string) error {
 	endpoint := "/_xpack/security/role/" + name
 	method := http.MethodDelete
 
@@ -131,7 +132,7 @@ func (c *Client) DeleteRole(name string) error {
 	if err != nil {
 		return err
 	}
-	return c.do(req, nil)
+	return c.do(ctx, req, nil)
 }
 
 // User management
@@ -141,7 +142,7 @@ type User struct {
 	Roles    []string `json:"roles"`
 }
 
-func (c *Client) CreateUser(name string, user *User) error {
+func (c *Client) CreateUser(ctx context.Context, name string, user *User) error {
 	endpoint := "/_xpack/security/user/" + name
 	method := http.MethodPost
 
@@ -153,10 +154,10 @@ func (c *Client) CreateUser(name string, user *User) error {
 	if err != nil {
 		return err
 	}
-	return c.do(req, nil)
+	return c.do(ctx, req, nil)
 }
 
-func (c *Client) ChangePassword(name, newPassword string) error {
+func (c *Client) ChangePassword(ctx context.Context, name, newPassword string) error {
 	endpoint := "/_xpack/security/user/" + name + "/_password"
 	method := http.MethodPost
 
@@ -168,10 +169,10 @@ func (c *Client) ChangePassword(name, newPassword string) error {
 	if err != nil {
 		return err
 	}
-	return c.do(req, nil)
+	return c.do(ctx, req, nil)
 }
 
-func (c *Client) DeleteUser(name string) error {
+func (c *Client) DeleteUser(ctx context.Context, name string) error {
 	endpoint := "/_xpack/security/user/" + name
 	method := http.MethodDelete
 
@@ -179,12 +180,12 @@ func (c *Client) DeleteUser(name string) error {
 	if err != nil {
 		return err
 	}
-	return c.do(req, nil)
+	return c.do(ctx, req, nil)
 }
 
 // Low-level request handling
 
-func (c *Client) do(req *http.Request, ret interface{}) error {
+func (c *Client) do(ctx context.Context, req *http.Request, ret interface{}) error {
 	// Prepare the request.
 	retryableReq, err := retryablehttp.NewRequest(req.Method, req.URL.String(), req.Body)
 	if err != nil {
@@ -194,7 +195,7 @@ func (c *Client) do(req *http.Request, ret interface{}) error {
 	retryableReq.Header.Add("Content-Type", "application/json")
 
 	// Execute the request.
-	resp, err := c.client.Do(retryableReq)
+	resp, err := c.client.Do(retryableReq.WithContext(ctx))
 	if err != nil {
 		return err
 	}
