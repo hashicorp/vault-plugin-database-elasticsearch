@@ -2,20 +2,20 @@
 
 
 [[projects]]
-  digest = "1:166438587ed45ac211dab8a3ecebf4fa0c186d0db63430fb9127bbc2e5fcdc67"
-  name = "github.com/cenkalti/backoff"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "1e4cf3da559842a91afcb6ea6141451e6c30c618"
-  version = "v2.1.1"
-
-[[projects]]
   digest = "1:af105c7c5dc0b4ae41991f122cae860b9600f7d226072c2a83127048c991660c"
   name = "github.com/hashicorp/go-cleanhttp"
   packages = ["."]
   pruneopts = "UT"
   revision = "eda1e5db218aad1db63ca4642c8906b26bcf2744"
   version = "v0.5.1"
+
+[[projects]]
+  digest = "1:1ba2690391610cce08f12c42dd7e8b5f9114a697e85d695280c67b8487cfc38e"
+  name = "github.com/hashicorp/go-retryablehttp"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "357460732517ec3b57c05c51443296bdd6df1874"
+  version = "v0.5.3"
 
 [[projects]]
   digest = "1:a54ada9beb59fdc35b69322979e870ff0b780e03f4dc309c4c8674b94927df75"
@@ -37,8 +37,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/cenkalti/backoff",
-    "github.com/hashicorp/go-cleanhttp",
+    "github.com/hashicorp/go-retryablehttp",
     "github.com/hashicorp/go-rootcerts",
   ]
   solver-name = "gps-cdcl"

@@ -13,11 +13,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"time"
 
-	"github.com/cenkalti/backoff"
-	cleanhttp "github.com/hashicorp/go-cleanhttp"
-	rootcerts "github.com/hashicorp/go-rootcerts"
+	"github.com/hashicorp/go-retryablehttp"
+	"github.com/hashicorp/go-rootcerts"
 )
 
 type ClientConfig struct {
@@ -53,7 +51,7 @@ type TLSConfig struct {
 }
 
 func NewClient(config *ClientConfig) (*Client, error) {
-	httpClient := cleanhttp.DefaultClient()
+	client := retryablehttp.NewClient()
 	if config.TLSConfig != nil {
 		conf := &tls.Config{
 			ServerName:         config.TLSConfig.TLSServerName,
@@ -76,24 +74,25 @@ func NewClient(config *ClientConfig) (*Client, error) {
 				return nil, err
 			}
 		}
-		httpClient.Transport = &http.Transport{TLSClientConfig: conf}
+
+		client.HTTPClient.Transport = &http.Transport{TLSClientConfig: conf}
 	}
 	return &Client{
-		username:   config.Username,
-		password:   config.Password,
-		baseURL:    config.BaseURL,
-		httpClient: httpClient,
+		username: config.Username,
+		password: config.Password,
+		baseURL:  config.BaseURL,
+		client:   client,
 	}, nil
 }
 
 type Client struct {
 	username, password, baseURL string
-	httpClient                  *http.Client
+	client                      *retryablehttp.Client
 }
 
 // Role management
 
-func (c *Client) CreateRole(done <-chan struct{}, name string, role map[string]interface{}) error {
+func (c *Client) CreateRole(name string, role map[string]interface{}) error {
 	endpoint := "/_xpack/security/role/" + name
 	method := http.MethodPost
 
@@ -105,11 +104,11 @@ func (c *Client) CreateRole(done <-chan struct{}, name string, role map[string]i
 	if err != nil {
 		return err
 	}
-	return c.do(done, req, nil)
+	return c.do(req, nil)
 }
 
 // GetRole returns nil, nil if role is unfound.
-func (c *Client) GetRole(done <-chan struct{}, name string) (map[string]interface{}, error) {
+func (c *Client) GetRole(name string) (map[string]interface{}, error) {
 	endpoint := "/_xpack/security/role/" + name
 	method := http.MethodGet
 
@@ -118,13 +117,13 @@ func (c *Client) GetRole(done <-chan struct{}, name string) (map[string]interfac
 		return nil, err
 	}
 	var roles map[string]map[string]interface{}
-	if err := c.do(done, req, &roles); err != nil {
+	if err := c.do(req, &roles); err != nil {
 		return nil, err
 	}
 	return roles[name], nil
 }
 
-func (c *Client) DeleteRole(done <-chan struct{}, name string) error {
+func (c *Client) DeleteRole(name string) error {
 	endpoint := "/_xpack/security/role/" + name
 	method := http.MethodDelete
 
@@ -132,7 +131,7 @@ func (c *Client) DeleteRole(done <-chan struct{}, name string) error {
 	if err != nil {
 		return err
 	}
-	return c.do(done, req, nil)
+	return c.do(req, nil)
 }
 
 // User management
@@ -142,7 +141,7 @@ type User struct {
 	Roles    []string `json:"roles"`
 }
 
-func (c *Client) CreateUser(done <-chan struct{}, name string, user *User) error {
+func (c *Client) CreateUser(name string, user *User) error {
 	endpoint := "/_xpack/security/user/" + name
 	method := http.MethodPost
 
@@ -154,10 +153,10 @@ func (c *Client) CreateUser(done <-chan struct{}, name string, user *User) error
 	if err != nil {
 		return err
 	}
-	return c.do(done, req, nil)
+	return c.do(req, nil)
 }
 
-func (c *Client) ChangePassword(done <-chan struct{}, name, newPassword string) error {
+func (c *Client) ChangePassword(name, newPassword string) error {
 	endpoint := "/_xpack/security/user/" + name + "/_password"
 	method := http.MethodPost
 
@@ -169,10 +168,10 @@ func (c *Client) ChangePassword(done <-chan struct{}, name, newPassword string) 
 	if err != nil {
 		return err
 	}
-	return c.do(done, req, nil)
+	return c.do(req, nil)
 }
 
-func (c *Client) DeleteUser(done <-chan struct{}, name string) error {
+func (c *Client) DeleteUser(name string) error {
 	endpoint := "/_xpack/security/user/" + name
 	method := http.MethodDelete
 
@@ -180,49 +179,24 @@ func (c *Client) DeleteUser(done <-chan struct{}, name string) error {
 	if err != nil {
 		return err
 	}
-	return c.do(done, req, nil)
+	return c.do(req, nil)
 }
 
 // Low-level request handling
 
-func (c *Client) do(done <-chan struct{}, req *http.Request, ret interface{}) error {
-
-	req.SetBasicAuth(c.username, c.password)
-	req.Header.Add("Content-Type", "application/json")
-
-	expBackoff := backoff.NewExponentialBackOff()
-	backoffTimer := time.NewTimer(0)
-	var lastErr error
-	for tries := 0; tries < 10; tries++ {
-
-		if tries != 0 {
-			backoffTimer.Reset(expBackoff.NextBackOff())
-			select {
-			case <-done:
-				return nil
-			case <-backoffTimer.C:
-			}
-		}
-
-		retryable, err := c.doRequest(req, ret)
-		if err == nil {
-			return nil
-		}
-		if !retryable {
-			return err
-		}
-		lastErr = err
-	}
-	return lastErr
-}
-
-// doRequest attemtps to execute a request once.
-// If the err is nil, the request was successful. ret may or may not be nil.
-// If the err is populated, retryable may be checked to determine whether to try again.
-func (c *Client) doRequest(req *http.Request, ret interface{}) (retryable bool, err error) {
-	resp, err := c.httpClient.Do(req)
+func (c *Client) do(req *http.Request, ret interface{}) error {
+	// Prepare the request.
+	retryableReq, err := retryablehttp.NewRequest(req.Method, req.URL.String(), req.Body)
 	if err != nil {
-		return false, err
+		return err
+	}
+	retryableReq.SetBasicAuth(c.username, c.password)
+	retryableReq.Header.Add("Content-Type", "application/json")
+
+	// Execute the request.
+	resp, err := c.client.Do(retryableReq)
+	if err != nil {
+		return err
 	}
 	defer resp.Body.Close()
 
@@ -235,29 +209,22 @@ func (c *Client) doRequest(req *http.Request, ret interface{}) (retryable bool, 
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		if ret == nil {
 			// No body to read out.
-			return false, nil
+			return nil
 		}
 		if err := json.Unmarshal(body, ret); err != nil {
 			// We received a success response from the ES API but the body was in an unexpected format.
-			return false, fmt.Errorf("%s; %d: %s", err, resp.StatusCode, body)
+			return fmt.Errorf("%s; %d: %s", err, resp.StatusCode, body)
 		}
 		// Body has been successfully read out.
-		return false, nil
+		return nil
 	}
 
 	// 404 is actually another form of success in the ES API. It just means that an object we were searching
 	// for wasn't found.
 	if resp.StatusCode == 404 {
-		return false, nil
+		return nil
 	}
 
-	// We received some sort of API error. Let's read what we got into a returnable error.
-	respErr := fmt.Errorf("%d: %s", resp.StatusCode, body)
-
-	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-		// There's something permanently wrong with the request we're sending.
-		return false, respErr
-	}
-	// Let's retry on everything else - 5XX's and other things.
-	return true, respErr
+	// We received some sort of API error. Let's return it.
+	return fmt.Errorf("%d: %s", resp.StatusCode, body)
 }
