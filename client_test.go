@@ -42,7 +42,7 @@ func TestClient_CreateListGetDeleteRole(t *testing.T) {
 		t.Fatal(err)
 	}
 	clusterValue := fmt.Sprintf("%s", role["cluster"])
-	if clusterValue != "[all]" {
+	if clusterValue != "[manage_security]" {
 		t.Fatalf("expected manage_security but received %s", clusterValue)
 	}
 	if err := client.DeleteRole(ctx, "role-name"); err != nil {
@@ -110,7 +110,7 @@ func TestTLSClient(t *testing.T) {
 		t.Fatal(err)
 	}
 	clusterValue := fmt.Sprintf("%s", role["cluster"])
-	if clusterValue != "[all]" {
+	if clusterValue != "[manage_security]" {
 		t.Fatalf("expected manage_security but received %s", clusterValue)
 	}
 	if err := client.DeleteRole(ctx, "role-name"); err != nil {

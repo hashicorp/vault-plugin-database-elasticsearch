@@ -9,7 +9,7 @@ const (
 
 	GetRoleResponse = `{
 	  "role-name": {
-	    "cluster" : [ "all" ],
+	    "cluster" : [ "manage_security" ],
 	    "indices" : [
 	      {
 	        "names" : [ "index1", "index2" ],
