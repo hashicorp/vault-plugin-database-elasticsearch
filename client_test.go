@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -157,6 +158,20 @@ func TestClient_BadResponses(t *testing.T) {
 }
 
 func handleRequests(w http.ResponseWriter, r *http.Request) {
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte(fmt.Sprintf("unable to read request body due to %s", err.Error())))
+		return
+	}
+	body := make(map[string]interface{})
+	if len(bodyBytes) > 0 {
+		if err := json.Unmarshal(bodyBytes, &body); err != nil {
+			w.WriteHeader(400)
+			w.Write([]byte(fmt.Sprintf("unable to unmarshal %s due to %s", bodyBytes, err.Error())))
+			return
+		}
+	}
 	switch r.URL.Path {
 	case "/_xpack/security/role/role-name":
 		switch r.Method {
@@ -182,6 +197,11 @@ func handleRequests(w http.ResponseWriter, r *http.Request) {
 	case "/_xpack/security/user/user-name/_password":
 		switch r.Method {
 		case http.MethodPost:
+			if body["password"].(string) != "newPa55w0rd" {
+				w.WriteHeader(400)
+				w.Write([]byte("password is required"))
+				return
+			}
 			w.Write([]byte(fixtures.ChangePasswordResponse))
 			return
 		}
