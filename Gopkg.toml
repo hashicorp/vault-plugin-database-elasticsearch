@@ -25,6 +25,14 @@
 #   unused-packages = true
 
 
+[[constraint]]
+  name = "github.com/hashicorp/go-retryablehttp"
+  version = "0.5.3"
+
+[[constraint]]
+  name = "github.com/hashicorp/go-rootcerts"
+  version = "1.0.0"
+
 [prune]
   go-tests = true
   unused-packages = true
