@@ -2,43 +2,38 @@ package elasticsearch
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"reflect"
 	"testing"
 
 	"github.com/hashicorp/go-retryablehttp"
-	"github.com/hashicorp/vault-plugin-database-elasticsearch/test-fixtures"
+	"github.com/hashicorp/vault-plugin-database-elasticsearch/mock"
 )
 
-const (
-	esHome     = "/home/somewhere/Applications/elasticsearch-6.6.1"
-	esUsername = "fizz"
-	esPassword = "buzz"
-)
+const esHome = "/home/somewhere/Applications/elasticsearch-6.6.1"
 
 var ctx = context.Background()
 
 func TestClient_CreateListGetDeleteRole(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(handleRequests))
+	esAPI := mock.Elasticsearch()
+	ts := httptest.NewServer(http.HandlerFunc(esAPI.HandleRequests))
 	defer ts.Close()
 
 	client, err := NewClient(&ClientConfig{
-		Username: esUsername,
-		Password: esPassword,
+		Username: esAPI.Username(),
+		Password: esAPI.Password(),
 		BaseURL:  ts.URL,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := client.CreateRole(ctx, "role-name", map[string]interface{}{
+	originalRole := map[string]interface{}{
 		"cluster": []string{"manage_security"},
-	}); err != nil {
+	}
+	if err := client.CreateRole(ctx, "role-name", originalRole); err != nil {
 		t.Fatal(err)
 	}
 
@@ -46,12 +41,9 @@ func TestClient_CreateListGetDeleteRole(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	roleResponseBody := make(map[string]interface{})
-	if err := json.Unmarshal([]byte(fixtures.GetRoleResponse), &roleResponseBody); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(roleResponseBody["role-name"], role) {
-		t.Fatalf("expected %s but received %s", roleResponseBody, role)
+
+	if fmt.Sprintf("%s", originalRole) != fmt.Sprintf("%s", role) {
+		t.Fatalf("expected %s but received %s", originalRole, role)
 	}
 
 	if err := client.DeleteRole(ctx, "role-name"); err != nil {
@@ -60,12 +52,13 @@ func TestClient_CreateListGetDeleteRole(t *testing.T) {
 }
 
 func TestClient_CreateGetDeleteUser(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(handleRequests))
+	esAPI := mock.Elasticsearch()
+	ts := httptest.NewServer(http.HandlerFunc(esAPI.HandleRequests))
 	defer ts.Close()
 
 	client, err := NewClient(&ClientConfig{
-		Username: esUsername,
-		Password: esPassword,
+		Username: esAPI.Username(),
+		Password: esAPI.Password(),
 		BaseURL:  ts.URL,
 	})
 	if err != nil {
@@ -89,7 +82,8 @@ func TestTLSClient(t *testing.T) {
 	if os.Getenv("VAULT_ACC") != "1" {
 		t.Skip("VAULT_ACC != 1")
 	}
-	ts := httptest.NewTLSServer(http.HandlerFunc(handleRequests))
+	esAPI := mock.Elasticsearch()
+	ts := httptest.NewTLSServer(http.HandlerFunc(esAPI.HandleRequests))
 	defer ts.Close()
 
 	tlsConfig := &TLSConfig{
@@ -98,8 +92,8 @@ func TestTLSClient(t *testing.T) {
 		ClientKey:  esHome + "/config/certs/elastic-certificates.key.pem",
 	}
 	client, err := NewClient(&ClientConfig{
-		Username:  esUsername,
-		Password:  esPassword,
+		Username:  esAPI.Username(),
+		Password:  esAPI.Password(),
 		BaseURL:   ts.URL,
 		TLSConfig: tlsConfig,
 	})
@@ -135,8 +129,8 @@ func TestClient_BadResponses(t *testing.T) {
 	defer ts.Close()
 
 	client, err := NewClient(&ClientConfig{
-		Username: esUsername,
-		Password: esPassword,
+		Username: "fizz",
+		Password: "buzz",
 		BaseURL:  ts.URL,
 	})
 	if err != nil {
@@ -155,60 +149,6 @@ func TestClient_BadResponses(t *testing.T) {
 	if _, err := client.GetRole(ctx, "503-unavailable"); err.Error() != "503: <html>Service Unavailable</html>" {
 		t.Fatal(`expected "503: <html>Service Unavailable</html>"`)
 	}
-}
-
-func handleRequests(w http.ResponseWriter, r *http.Request) {
-	bodyBytes, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte(fmt.Sprintf("unable to read request body due to %s", err.Error())))
-		return
-	}
-	body := make(map[string]interface{})
-	if len(bodyBytes) > 0 {
-		if err := json.Unmarshal(bodyBytes, &body); err != nil {
-			w.WriteHeader(400)
-			w.Write([]byte(fmt.Sprintf("unable to unmarshal %s due to %s", bodyBytes, err.Error())))
-			return
-		}
-	}
-	switch r.URL.Path {
-	case "/_xpack/security/role/role-name":
-		switch r.Method {
-		case http.MethodPost:
-			w.Write([]byte(fixtures.CreateRoleResponse))
-			return
-		case http.MethodGet:
-			w.Write([]byte(fixtures.GetRoleResponse))
-			return
-		case http.MethodDelete:
-			w.Write([]byte(fixtures.DeleteRoleResponse))
-			return
-		}
-	case "/_xpack/security/user/user-name":
-		switch r.Method {
-		case http.MethodPost:
-			w.Write([]byte(fixtures.CreateUserResponse))
-			return
-		case http.MethodDelete:
-			w.Write([]byte(fixtures.DeleteUserResponse))
-			return
-		}
-	case "/_xpack/security/user/user-name/_password":
-		switch r.Method {
-		case http.MethodPost:
-			if body["password"].(string) != "newPa55w0rd" {
-				w.WriteHeader(400)
-				w.Write([]byte("password is required"))
-				return
-			}
-			w.Write([]byte(fixtures.ChangePasswordResponse))
-			return
-		}
-	}
-	// We received an unexpected request.
-	w.WriteHeader(404)
-	w.Write([]byte(fmt.Sprintf("%s to %s is unsupported", r.Method, r.URL.Path)))
 }
 
 func giveBadResponses(w http.ResponseWriter, r *http.Request) {
