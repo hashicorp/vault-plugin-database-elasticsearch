@@ -17,23 +17,15 @@ import (
 	"github.com/hashicorp/vault/plugins/helper/database/dbutil"
 )
 
-func New() (interface{}, error) {
-	return &Elasticsearch{
+func Run(apiTLSConfig *api.TLSConfig) error {
+	plugins.Serve(&Elasticsearch{
 		credentialProducer: &credsutil.SQLCredentialsProducer{
 			DisplayNameLen: 15,
 			RoleNameLen:    15,
 			UsernameLen:    100,
 			Separator:      "-",
 		},
-	}, nil
-}
-
-func Run(apiTLSConfig *api.TLSConfig) error {
-	dbType, err := New()
-	if err != nil {
-		return err
-	}
-	plugins.Serve(dbType.(dbplugin.Database), apiTLSConfig)
+	}, apiTLSConfig)
 	return nil
 }
 
