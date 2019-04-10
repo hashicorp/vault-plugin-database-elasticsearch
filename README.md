@@ -63,7 +63,7 @@ $ curl \
 The contents of `data.json` in this example are:
 ```
 {
- "password" : "<replace>",
+ "password" : "myPa55word",
  "roles" : [ "vault" ],
  "full_name" : "Hashicorp Vault",
  "metadata" : {
@@ -77,7 +77,9 @@ Now, Elasticsearch is configured and ready to be used with Vault.
 
 ## Example Walkthrough
 
-Here is an example of how to successfully configure and use this secrets engine using the Vault CLI.
+Here is an example of how to successfully configure and use this secrets engine using the Vault CLI. Note that the 
+`plugin_name` may need to be `vault-plugin-database-elasticsearch` if you manually mounted it rather than using the
+version of the plugin built in to Vault.
 ```
 export ES_HOME=/home/somewhere/Applications/elasticsearch-6.6.1
 
@@ -87,16 +89,16 @@ vault write database/config/my-elasticsearch-database \
     plugin_name="elasticsearch-database-plugin" \
     allowed_roles="internally-defined-role,externally-defined-role" \
     username=vault \
-    password=<replace> \
+    password=myPa55word \
     url=http://localhost:9200 \
-    ca_cert=/usr/share/ca-certificates/extra/elastic-stack-ca.crt \
+    ca_cert=/usr/share/ca-certificates/extra/elastic-stack-ca.crt.pem \
     client_cert=$ES_HOME/config/certs/elastic-certificates.crt.pem \
     client_key=$ES_HOME/config/certs/elastic-certificates.key.pem
     
 # create and get creds with one type of role
 vault write database/roles/internally-defined-role \
     db_name=my-elasticsearch-database \
-    creation_statements='{"elasticsearch_role_definition": {"indices": ["read"]}}' \
+    creation_statements='{"elasticsearch_role_definition": {"indices": [{"names":["*"], "privileges":["read"]}]}}' \
     default_ttl="1h" \
     max_ttl="24h"
     
@@ -121,44 +123,7 @@ vault lease revoke database/creds/internally-defined-role/nvJ6SveX9PN1E4BlxVWdKu
 vault write -force database/rotate-root/my-elasticsearch-database
 ```
 
-## Developing the Elasticsearch Database Secrets Engine
-
-### Setting Up a Test Environment
-
-Docker can be a convenient way to run Elasticsearch for development locally on port 9200.
-```
-docker run -d \
-    --name elasticsearch \
-    -p 9200:9200 \
-    -e "discovery.type=single-node" \
-    elasticsearch:6.6.1
-```
-
-You can confirm ES is up using:
-```
-$ curl http://localhost:9200
-{
-  "name" : "5RWOGpe",
-  "cluster_name" : "docker-cluster",
-  "cluster_uuid" : "zedWR3K7RUaxmq3DNxrQkg",
-  "version" : {
-    "number" : "6.6.1",
-    "build_flavor" : "default",
-    "build_type" : "tar",
-    "build_hash" : "1fd8f69",
-    "build_date" : "2019-02-13T17:10:04.160291Z",
-    "build_snapshot" : false,
-    "lucene_version" : "7.6.0",
-    "minimum_wire_compatibility_version" : "5.6.0",
-    "minimum_index_compatibility_version" : "5.0.0"
-  },
-  "tagline" : "You Know, for Search"
-}
-```
-
-After starting it, go through Getting Started above to create an account Vault can use for creating dynamic credentials.
-
-### Installation
+## Developing
 
 The Vault plugin system is documented on the [Vault documentation site](https://www.vaultproject.io/docs/internals/plugins.html).
 
@@ -168,6 +133,6 @@ Register the plugin using
 
 ```
 vault write sys/plugins/catalog/vault-plugin-database-elasticsearch \
-    sha256=<expected SHA256 Hex value of the plugin binary> \
+    sha256=$(sha256sum bin/vault-plugin-database-elasticsearch) \
     command="vault-plugin-database-elasticsearch"
 ```
