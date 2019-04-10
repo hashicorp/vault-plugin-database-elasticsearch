@@ -136,6 +136,10 @@ func (es *Elasticsearch) CreateUser(ctx context.Context, statements dbplugin.Sta
 	if err != nil {
 		return "", "", errwrap.Wrapf("unable to get client: {{err}}", err)
 	}
+
+	// If the RoleToCreate map has been populated with any data, we have one role to create.
+	// There can either be one RoleToCreate and no PreexistingRoles, or >= 1 PreexistingRoles
+	// and no RoleToCreate. They're mutually exclusive.
 	if len(stmt.RoleToCreate) > 0 {
 		// We'll simply name the role the same thing as the username, making it easy to tie back to this user.
 		if err := client.CreateRole(ctx, username, stmt.RoleToCreate); err != nil {
