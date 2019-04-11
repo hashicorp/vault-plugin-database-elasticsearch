@@ -193,7 +193,7 @@ func (es *Elasticsearch) RevokeUser(ctx context.Context, statements dbplugin.Sta
 	return errs
 }
 
-func (es *Elasticsearch) RotateRootCredentials(ctx context.Context, statements []string) (map[string]interface{}, error) {
+func (es *Elasticsearch) RotateRootCredentials(ctx context.Context, _ []string) (map[string]interface{}, error) {
 	newPassword, err := es.credentialProducer.GeneratePassword()
 	if err != nil {
 		return nil, errwrap.Wrapf("unable to generate root password: {{err}}", err)
