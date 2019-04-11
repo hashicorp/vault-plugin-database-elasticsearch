@@ -1,4 +1,4 @@
-# Vault Plugin: Elasticsearch Database Secrets Engine
+# Elasticsearch Database Secrets Engine
 This plugin provides unique, short-lived credentials for Elasticsearch using native X-Pack Security.
 
 ## Getting Started
