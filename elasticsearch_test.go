@@ -2,6 +2,7 @@ package elasticsearch
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -166,7 +167,7 @@ func (e *Environment) Test_InternallyDefinedRole(t *testing.T) {
 	// Write the role.
 	writeResp, err := e.doVaultReq(http.MethodPost, "/v1/database/roles/internally-defined-role", map[string]interface{}{
 		"db_name":             "my-elasticsearch-database",
-		"creation_statements": `{"elasticsearch_role_definition": {"indices": [{"names":["*"], "privileges":["read"]}]}}`,
+		"creation_statements": `{"elasticsearch_role_definition": {"cluster": ["manage_security"]}}`,
 		"default_ttl":         "1h",
 		"max_ttl":             "24h",
 	})
@@ -196,7 +197,7 @@ func (e *Environment) Test_InternallyDefinedRole(t *testing.T) {
 		t.Fatal("expected creation_statements but they weren't returned")
 	} else if len(stmts.([]interface{})) != 1 {
 		t.Fatalf("expected 1 creation_statements but received %s", stmts)
-	} else if fmt.Sprintf("%s", stmts.([]interface{})[0]) != `{"elasticsearch_role_definition": {"indices": [{"names":["*"], "privileges":["read"]}]}}` {
+	} else if fmt.Sprintf("%s", stmts.([]interface{})[0]) != `{"elasticsearch_role_definition": {"cluster": ["manage_security"]}}` {
 		t.Fatalf("received unexpected statement: %s", stmts.([]interface{})[0])
 	}
 	if respData["default_ttl"].(float64) != 3600 {
@@ -234,12 +235,29 @@ func (e *Environment) Test_InternallyDefinedRole(t *testing.T) {
 	}
 
 	credData := credsRespBody["data"].(map[string]interface{})
-
-	if credData["username"].(string) == "" {
+	username := credData["username"].(string)
+	if username == "" {
 		t.Fatalf("%s didn't return a username", credData)
 	}
-	if credData["password"].(string) == "" {
+	password := credData["password"].(string)
+	if password == "" {
 		t.Fatalf("%s didn't return a password", credData)
+	}
+
+	// Test the new credentials by deleting this role and user.
+	configCopy := copyMap(e.Config)
+	configCopy["username"] = username
+	configCopy["password"] = password
+	fmt.Printf("testing %s", configCopy)
+	client, err := buildClient(configCopy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := client.DeleteRole(context.Background(), username); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.DeleteUser(context.Background(), username); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -313,11 +331,26 @@ func (e *Environment) Test_ExternallyDefinedRole(t *testing.T) {
 	}
 
 	credData := credsRespBody["data"].(map[string]interface{})
-	if credData["username"].(string) == "" {
+	username := credData["username"].(string)
+	if username == "" {
 		t.Fatalf("%s didn't return a username", credData)
 	}
-	if credData["password"].(string) == "" {
+	password := credData["password"].(string)
+	if password == "" {
 		t.Fatalf("%s didn't return a password", credData)
+	}
+
+	// Test the new credentials by deleting this user.
+	configCopy := copyMap(e.Config)
+	configCopy["username"] = username
+	configCopy["password"] = password
+	fmt.Printf("testing %s", configCopy)
+	client, err := buildClient(configCopy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := client.DeleteUser(context.Background(), username); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -334,6 +367,9 @@ func (e *Environment) Test_RenewCredentials(t *testing.T) {
 	result := make(map[string]interface{})
 	if err := json.NewDecoder(firstRenewal.Body).Decode(&result); err != nil {
 		t.Fatal(err)
+	}
+	if firstRenewal.StatusCode != 200 {
+		t.Fatalf("%d: %s", firstRenewal.StatusCode, result)
 	}
 	if result["lease_duration"].(float64) != 100 {
 		t.Fatal("expected lease_duration of 100")
@@ -466,4 +502,12 @@ func (e *Environment) doVaultReq(method, endpoint string, body map[string]interf
 	}
 	req.Header.Set("X-Vault-Token", e.VaultToken)
 	return cleanhttp.DefaultClient().Do(req)
+}
+
+func copyMap(m map[string]interface{}) map[string]interface{} {
+	mCopy := make(map[string]interface{})
+	for k, v := range m {
+		mCopy[k] = v
+	}
+	return mCopy
 }

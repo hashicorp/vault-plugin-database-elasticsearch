@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	username = "fizz"
-	password = "buzz"
+	superUsername = "fizz"
+	superPassword = "buzz"
 )
 
 func Elasticsearch() *FakeElasticsearch {
@@ -26,8 +26,28 @@ type FakeElasticsearch struct {
 }
 
 func (f *FakeElasticsearch) HandleRequests(w http.ResponseWriter, r *http.Request) {
+	// See if the username and password given match any expected.
 	reqUsername, reqPassword, _ := r.BasicAuth()
-	if reqUsername != username || reqPassword != password {
+	match := false
+	if reqUsername == superUsername && reqPassword == superPassword {
+		match = true
+	} else {
+		// posting user: {"password":"pa55w0rd","roles":["vault"]}
+		for name, user := range f.Users {
+			if name != reqUsername {
+				continue
+			}
+			password, ok := user["password"].(string)
+			if !ok {
+				break
+			}
+			if password != reqPassword {
+				break
+			}
+			match = true
+		}
+	}
+	if !match {
 		w.WriteHeader(401)
 		return
 	}
@@ -84,6 +104,7 @@ func (f *FakeElasticsearch) HandleRequests(w http.ResponseWriter, r *http.Reques
 			} else {
 				w.Write([]byte(fmt.Sprintf(createUserResponseTpl, "true", "true")))
 			}
+			f.Users[objName] = body
 			return
 		case http.MethodDelete:
 			if _, found := f.Users[objName]; found {
@@ -91,6 +112,7 @@ func (f *FakeElasticsearch) HandleRequests(w http.ResponseWriter, r *http.Reques
 			} else {
 				w.Write([]byte(fmt.Sprintf(deleteUserResponseTpl, "false")))
 			}
+			delete(f.Users, objName)
 			return
 		}
 	case strings.HasPrefix(r.URL.Path, "/_xpack/security/user/") && strings.HasSuffix(r.URL.Path, "_password"):
@@ -111,9 +133,9 @@ func (f *FakeElasticsearch) HandleRequests(w http.ResponseWriter, r *http.Reques
 }
 
 func (f *FakeElasticsearch) Username() string {
-	return username
+	return superUsername
 }
 
 func (f *FakeElasticsearch) Password() string {
-	return password
+	return superPassword
 }
