@@ -248,7 +248,6 @@ func (e *Environment) Test_InternallyDefinedRole(t *testing.T) {
 	configCopy := copyMap(e.Config)
 	configCopy["username"] = username
 	configCopy["password"] = password
-	fmt.Printf("testing %s", configCopy)
 	client, err := buildClient(configCopy)
 	if err != nil {
 		t.Fatal(err)
@@ -344,7 +343,6 @@ func (e *Environment) Test_ExternallyDefinedRole(t *testing.T) {
 	configCopy := copyMap(e.Config)
 	configCopy["username"] = username
 	configCopy["password"] = password
-	fmt.Printf("testing %s", configCopy)
 	client, err := buildClient(configCopy)
 	if err != nil {
 		t.Fatal(err)
