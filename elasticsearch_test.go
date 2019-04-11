@@ -20,7 +20,7 @@ func TestElasticsearch(t *testing.T) {
 	env := &UnitTestEnv{
 		Username: esAPI.Username(),
 		Password: esAPI.Password(),
-		URL: ts.URL,
+		URL:      ts.URL,
 		Elasticsearch: &Elasticsearch{
 			credentialProducer: &credsutil.SQLCredentialsProducer{
 				DisplayNameLen: 15,
@@ -42,7 +42,7 @@ func TestElasticsearch(t *testing.T) {
 
 type UnitTestEnv struct {
 	Username, Password, URL string
-	Elasticsearch *Elasticsearch
+	Elasticsearch           *Elasticsearch
 
 	TestUsers map[string]dbplugin.Statements
 }
@@ -59,7 +59,7 @@ func (e *UnitTestEnv) TestElasticsearch_Init(t *testing.T) {
 	config := map[string]interface{}{
 		"username": e.Username,
 		"password": e.Password,
-		"url": e.URL,
+		"url":      e.URL,
 	}
 	configToStore, err := e.Elasticsearch.Init(context.Background(), config, true)
 	if err != nil {
@@ -79,7 +79,7 @@ func (e *UnitTestEnv) TestElasticsearch_Initialize(t *testing.T) {
 	config := map[string]interface{}{
 		"username": e.Username,
 		"password": e.Password,
-		"url": e.URL,
+		"url":      e.URL,
 	}
 	if err := e.Elasticsearch.Initialize(context.Background(), config, true); err != nil {
 		t.Fatal(err)
@@ -92,7 +92,7 @@ func (e *UnitTestEnv) TestElasticsearch_CreateUser(t *testing.T) {
 	}
 	usernameConfig := dbplugin.UsernameConfig{
 		DisplayName: "display-name",
-		RoleName: "role-name",
+		RoleName:    "role-name",
 	}
 	username1, password1, err := e.Elasticsearch.CreateUser(context.Background(), statements1, usernameConfig, time.Time{})
 	if err != nil {
@@ -134,7 +134,7 @@ func (e *UnitTestEnv) TestElasticsearch_RotateRootCredentials(t *testing.T) {
 	originalConfig := map[string]interface{}{
 		"username": e.Username,
 		"password": e.Password,
-		"url": e.URL,
+		"url":      e.URL,
 	}
 	configToStore, err := e.Elasticsearch.RotateRootCredentials(context.Background(), nil)
 	if err != nil {
