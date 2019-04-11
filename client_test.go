@@ -5,14 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
-	"github.com/hashicorp/go-retryablehttp"
 	"github.com/hashicorp/vault-plugin-database-elasticsearch/mock"
 )
-
-const esHome = "/home/somewhere/Applications/elasticsearch-6.6.1"
 
 var ctx = context.Background()
 
@@ -78,52 +74,9 @@ func TestClient_CreateGetDeleteUser(t *testing.T) {
 	}
 }
 
-func TestTLSClient(t *testing.T) {
-	if os.Getenv("VAULT_ACC") != "1" {
-		t.Skip("VAULT_ACC != 1")
-	}
-	esAPI := mock.Elasticsearch()
-	ts := httptest.NewTLSServer(http.HandlerFunc(esAPI.HandleRequests))
-	defer ts.Close()
-
-	tlsConfig := &TLSConfig{
-		CACert:     "/usr/local/share/ca-certificates/elastic-stack-ca.crt.pem",
-		ClientCert: esHome + "/config/certs/elastic-certificates.crt.pem",
-		ClientKey:  esHome + "/config/certs/elastic-certificates.key.pem",
-	}
-	client, err := NewClient(&ClientConfig{
-		Username:  esAPI.Username(),
-		Password:  esAPI.Password(),
-		BaseURL:   ts.URL,
-		TLSConfig: tlsConfig,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	client.client = retryablehttp.NewClient()
-	client.client.HTTPClient = ts.Client()
-
-	if err := client.CreateRole(ctx, "role-name", map[string]interface{}{
-		"cluster": []string{"manage_security"},
-	}); err != nil {
-		t.Fatal(err)
-	}
-	role, err := client.GetRole(ctx, "role-name")
-	if err != nil {
-		t.Fatal(err)
-	}
-	clusterValue := fmt.Sprintf("%s", role["cluster"])
-	if clusterValue != "[manage_security]" {
-		t.Fatalf("expected manage_security but received %s", clusterValue)
-	}
-	if err := client.DeleteRole(ctx, "role-name"); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestClient_BadResponses(t *testing.T) {
-	if os.Getenv("VAULT_ACC") != "1" {
-		t.Skip("VAULT_ACC != 1")
+	if testing.Short() {
+		t.SkipNow()
 	}
 	ts := httptest.NewServer(http.HandlerFunc(giveBadResponses))
 	defer ts.Close()
@@ -143,11 +96,11 @@ func TestClient_BadResponses(t *testing.T) {
 		// We shouldn't error on 404s because they are a success case.
 		t.Fatal(err)
 	}
-	if _, err := client.GetRole(ctx, "500-mysterious-internal-server-error"); err.Error() != "500: <html>Internal Server Error</html>" {
-		t.Fatal(`expected "500: <html>Internal Server Error</html>"`)
+	if _, err := client.GetRole(ctx, "500-mysterious-internal-server-error"); err == nil {
+		t.Fatalf(`expected err`)
 	}
-	if _, err := client.GetRole(ctx, "503-unavailable"); err.Error() != "503: <html>Service Unavailable</html>" {
-		t.Fatal(`expected "503: <html>Service Unavailable</html>"`)
+	if _, err := client.GetRole(ctx, "503-unavailable"); err == nil {
+		t.Fatal(`expected err`)
 	}
 }
 

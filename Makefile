@@ -18,7 +18,10 @@ dev: fmtcheck
 
 # test runs the unit tests and vets the code
 test: fmtcheck generate
-	CGO_ENABLED=1 go test -v -tags='$(BUILD_TAGS)' $(TEST) $(TESTARGS) -timeout=20m -parallel=4
+	CGO_ENABLED=1 go test -v -short -tags='$(BUILD_TAGS)' $(TEST) $(TESTARGS) -timeout=20m -parallel=1
+
+testacc: fmtcheck generate
+	VAULT_ACC=1 VAULT_ADDR=http://localhost:8200 VAULT_TOKEN=root CGO_ENABLED=1 go test -v -race -tags='$(BUILD_TAGS)' $(TEST) $(TESTARGS) -timeout=20m -parallel=1
 
 fmtcheck:
 	@sh -c "'$(CURDIR)/scripts/gofmtcheck.sh'"
@@ -33,4 +36,4 @@ bootstrap:
 		go get -u $$tool; \
 	done
 
-.PHONY: bin default generate test fmt fmtcheck dev bootstrap
+.PHONY: bin default generate test testacc fmt fmtcheck dev bootstrap
