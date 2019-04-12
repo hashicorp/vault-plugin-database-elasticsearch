@@ -193,7 +193,9 @@ func (es *Elasticsearch) RevokeUser(ctx context.Context, statements dbplugin.Sta
 	return errs
 }
 
-func (es *Elasticsearch) RotateRootCredentials(ctx context.Context, statements []string) (map[string]interface{}, error) {
+// RotateRootCredentials doesn't require any statements from the user because it's not configurable in any
+// way. We simply generate a new password and hit a pre-defined Elasticsearch REST API to rotate them.
+func (es *Elasticsearch) RotateRootCredentials(ctx context.Context, _ []string) (map[string]interface{}, error) {
 	newPassword, err := es.credentialProducer.GeneratePassword()
 	if err != nil {
 		return nil, errwrap.Wrapf("unable to generate root password: {{err}}", err)
