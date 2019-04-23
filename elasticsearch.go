@@ -3,16 +3,15 @@ package elasticsearch
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"sync"
 	"time"
 
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-multierror"
+	rootcerts "github.com/hashicorp/go-rootcerts"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/database/dbplugin"
 	"github.com/hashicorp/vault/sdk/database/helper/credsutil"
@@ -29,31 +28,48 @@ func Run(apiTLSConfig *api.TLSConfig) error {
 		},
 	}
 
-	tlsConf := &tls.Config{
-		ServerName:         apiTLSConfig.TLSServerName,
-		InsecureSkipVerify: apiTLSConfig.Insecure,
-		MinVersion:         tls.VersionTLS12,
-	}
+	tlsConf := &tls.Config{}
 
-	if apiTLSConfig.ClientCert != "" && apiTLSConfig.ClientKey != "" {
-		tlsCert, err := tls.LoadX509KeyPair(apiTLSConfig.ClientCert, apiTLSConfig.ClientKey)
+	var clientCert tls.Certificate
+	foundClientCert := false
+
+	switch {
+	case apiTLSConfig.ClientCert != "" && apiTLSConfig.ClientKey != "":
+		var err error
+		clientCert, err = tls.LoadX509KeyPair(apiTLSConfig.ClientCert, apiTLSConfig.ClientKey)
 		if err != nil {
 			return err
 		}
-		tlsConf.Certificates = []tls.Certificate{tlsCert}
+		foundClientCert = true
+	case apiTLSConfig.ClientCert != "" || apiTLSConfig.ClientKey != "":
+		return fmt.Errorf("both client cert and client key must be provided")
 	}
 
-	if apiTLSConfig.CACert != "" {
-		caPool := x509.NewCertPool()
-		data, err := ioutil.ReadFile(apiTLSConfig.CACert)
-		if err != nil {
+	if apiTLSConfig.CACert != "" || apiTLSConfig.CAPath != "" {
+		rootConfig := &rootcerts.Config{
+			CAFile: apiTLSConfig.CACert,
+			CAPath: apiTLSConfig.CAPath,
+		}
+		if err := rootcerts.ConfigureTLS(tlsConf, rootConfig); err != nil {
 			return err
 		}
+	}
 
-		if !caPool.AppendCertsFromPEM(data) {
-			return err
+	if apiTLSConfig.Insecure {
+		tlsConf.InsecureSkipVerify = true
+	}
+
+	if foundClientCert {
+		// We use this function to ignore the server's preferential list of
+		// CAs, otherwise any CA used for the cert auth backend must be in the
+		// server's CA pool
+		tlsConf.GetClientCertificate = func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			return &clientCert, nil
 		}
-		tlsConf.RootCAs = caPool
+	}
+
+	if apiTLSConfig.TLSServerName != "" {
+		tlsConf.ServerName = apiTLSConfig.TLSServerName
 	}
 
 	tlsProvider := func() (*tls.Config, error) {
