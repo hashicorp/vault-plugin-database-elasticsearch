@@ -2,14 +2,17 @@ package elasticsearch
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"sync"
 	"time"
 
 	"github.com/hashicorp/errwrap"
-	multierror "github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/database/dbplugin"
 	"github.com/hashicorp/vault/sdk/database/helper/credsutil"
@@ -17,14 +20,46 @@ import (
 )
 
 func Run(apiTLSConfig *api.TLSConfig) error {
-	dbplugin.Serve(&Elasticsearch{
+	db := &Elasticsearch{
 		credentialProducer: &credsutil.SQLCredentialsProducer{
 			DisplayNameLen: 15,
 			RoleNameLen:    15,
 			UsernameLen:    100,
 			Separator:      "-",
 		},
-	}, apiTLSConfig)
+	}
+
+	tlsConf := &tls.Config{
+		ServerName:         apiTLSConfig.TLSServerName,
+		InsecureSkipVerify: apiTLSConfig.Insecure,
+		MinVersion:         tls.VersionTLS12,
+	}
+
+	if apiTLSConfig.ClientCert != "" && apiTLSConfig.ClientKey != "" {
+		tlsCert, err := tls.LoadX509KeyPair(apiTLSConfig.ClientCert, apiTLSConfig.ClientKey)
+		if err != nil {
+			return err
+		}
+		tlsConf.Certificates = []tls.Certificate{tlsCert}
+	}
+
+	if apiTLSConfig.CACert != "" {
+		caPool := x509.NewCertPool()
+		data, err := ioutil.ReadFile(apiTLSConfig.CACert)
+		if err != nil {
+			return err
+		}
+
+		if !caPool.AppendCertsFromPEM(data) {
+			return err
+		}
+		tlsConf.RootCAs = caPool
+	}
+
+	tlsProvider := func() (*tls.Config, error) {
+		return tlsConf, nil
+	}
+	dbplugin.Serve(db, tlsProvider)
 	return nil
 }
 
