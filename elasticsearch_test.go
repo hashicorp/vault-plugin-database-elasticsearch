@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/vault-plugin-database-elasticsearch/mock"
-	"github.com/hashicorp/vault/builtin/logical/database/dbplugin"
-	"github.com/hashicorp/vault/plugins/helper/database/credsutil"
+	"github.com/hashicorp/vault/sdk/database/dbplugin"
+	"github.com/hashicorp/vault/sdk/database/helper/credsutil"
 )
 
 func TestElasticsearch(t *testing.T) {

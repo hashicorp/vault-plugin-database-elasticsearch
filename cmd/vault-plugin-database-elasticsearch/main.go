@@ -4,12 +4,12 @@ import (
 	"log"
 	"os"
 
-	"github.com/hashicorp/vault-plugin-database-elasticsearch"
-	"github.com/hashicorp/vault/helper/pluginutil"
+	elasticsearch "github.com/hashicorp/vault-plugin-database-elasticsearch"
+	"github.com/hashicorp/vault/api"
 )
 
 func main() {
-	apiClientMeta := &pluginutil.APIClientMeta{}
+	apiClientMeta := &api.APIClientMeta{}
 	flags := apiClientMeta.FlagSet()
 	flags.Parse(os.Args[1:])
 
