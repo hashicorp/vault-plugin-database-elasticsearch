@@ -9,7 +9,6 @@ import (
 
 	"github.com/hashicorp/vault-plugin-database-elasticsearch/mock"
 	"github.com/hashicorp/vault/builtin/logical/database/dbplugin"
-	"github.com/hashicorp/vault/plugins/helper/database/credsutil"
 )
 
 func TestElasticsearch(t *testing.T) {
@@ -18,18 +17,11 @@ func TestElasticsearch(t *testing.T) {
 	defer ts.Close()
 
 	env := &UnitTestEnv{
-		Username: esAPI.Username(),
-		Password: esAPI.Password(),
-		URL:      ts.URL,
-		Elasticsearch: &Elasticsearch{
-			credentialProducer: &credsutil.SQLCredentialsProducer{
-				DisplayNameLen: 15,
-				RoleNameLen:    15,
-				UsernameLen:    100,
-				Separator:      "-",
-			},
-		},
-		TestUsers: make(map[string]dbplugin.Statements),
+		Username:      esAPI.Username(),
+		Password:      esAPI.Password(),
+		URL:           ts.URL,
+		Elasticsearch: NewElasticsearch(),
+		TestUsers:     make(map[string]dbplugin.Statements),
 	}
 
 	t.Run("test type", env.TestElasticsearch_Type)
@@ -153,5 +145,25 @@ func (e *UnitTestEnv) TestElasticsearch_RotateRootCredentials(t *testing.T) {
 		if configToStore[k] != v {
 			t.Fatalf("for %s, expected %s but received %s", k, v, configToStore[k])
 		}
+	}
+}
+
+func TestElasticsearch_SecretValues(t *testing.T) {
+	es := &Elasticsearch{
+		config: map[string]interface{}{
+			"fizz":       "buzz",
+			"password":   "dont-show-me!",
+			"client_key": "dont-show-me-either!",
+		},
+	}
+	val := es.SecretValues()
+	if val["buzz"] != nil {
+		t.Fatal(`buzz isn't secret and shouldn't be in the map`)
+	}
+	if val["dont-show-me!"] != "[password]" {
+		t.Fatalf("expected %q but received %q", "[password]", val["dont-show-me!"])
+	}
+	if val["dont-show-me-either!"] != "[client_key]" {
+		t.Fatalf("expected %q but received %q", "[client_key]", val["dont-show-me-either!"])
 	}
 }
