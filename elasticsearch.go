@@ -11,10 +11,9 @@ import (
 	"github.com/hashicorp/errwrap"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/builtin/logical/database/dbplugin"
-	"github.com/hashicorp/vault/plugins"
-	"github.com/hashicorp/vault/plugins/helper/database/credsutil"
-	"github.com/hashicorp/vault/plugins/helper/database/dbutil"
+	"github.com/hashicorp/vault/sdk/database/dbplugin"
+	"github.com/hashicorp/vault/sdk/database/helper/credsutil"
+	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
 )
 
 func New() (interface{}, error) {
@@ -23,7 +22,7 @@ func New() (interface{}, error) {
 }
 
 func Run(apiTLSConfig *api.TLSConfig) error {
-	plugins.Serve(NewElasticsearch(), apiTLSConfig)
+	dbplugin.Serve(NewElasticsearch(), api.VaultPluginTLSProvider(apiTLSConfig))
 	return nil
 }
 
