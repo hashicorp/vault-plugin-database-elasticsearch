@@ -17,16 +17,25 @@ import (
 	"github.com/hashicorp/vault/plugins/helper/database/dbutil"
 )
 
+func New() (interface{}, error) {
+	db := NewElasticsearch()
+	return dbplugin.NewDatabaseErrorSanitizerMiddleware(db, db.SecretValues), nil
+}
+
 func Run(apiTLSConfig *api.TLSConfig) error {
-	plugins.Serve(&Elasticsearch{
+	plugins.Serve(NewElasticsearch(), apiTLSConfig)
+	return nil
+}
+
+func NewElasticsearch() *Elasticsearch {
+	return &Elasticsearch{
 		credentialProducer: &credsutil.SQLCredentialsProducer{
 			DisplayNameLen: 15,
 			RoleNameLen:    15,
 			UsernameLen:    100,
 			Separator:      "-",
 		},
-	}, apiTLSConfig)
-	return nil
+	}
 }
 
 // Elasticsearch implements dbplugin's Database interface.
@@ -45,6 +54,27 @@ type Elasticsearch struct {
 
 func (es *Elasticsearch) Type() (string, error) {
 	return "elasticsearch", nil
+}
+
+func (es *Elasticsearch) SecretValues() map[string]interface{} {
+	es.mux.RLock()
+	defer es.mux.RUnlock()
+
+	replacements := make(map[string]interface{})
+	for _, secretKey := range []string{"password", "client_key"} {
+		vIfc, found := es.config[secretKey]
+		if !found {
+			continue
+		}
+		secretVal, ok := vIfc.(string)
+		if !ok {
+			continue
+		}
+		// So, supposing a password of "0pen5e5ame",
+		// this will cause that string to get replaced with "[password]".
+		replacements[secretVal] = "[" + secretKey + "]"
+	}
+	return replacements
 }
 
 // Init is called on `$ vault write database/config/:db-name`,
