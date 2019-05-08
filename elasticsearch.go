@@ -56,6 +56,9 @@ func (es *Elasticsearch) Type() (string, error) {
 	return "elasticsearch", nil
 }
 
+// SecretValues is used by some error-sanitizing middleware in Vault that basically
+// replaces the keys in the map with the values given so they're not leaked via
+// error messages.
 func (es *Elasticsearch) SecretValues() map[string]interface{} {
 	es.mux.RLock()
 	defer es.mux.RUnlock()
