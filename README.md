@@ -9,7 +9,7 @@ To use it, you may need to enable a 30-day trial with Elasticsearch, or activate
 
 ### Enable X-Pack Security in Elasticsearch
 
-Read [Securing the Elastic Stack](https://www.elastic.co/guide/en/elastic-stack-overview/7.1/elasticsearch-security.html) and 
+Read [Securing the Elastic Stack](https://www.elastic.co/guide/en/elastic-stack-overview/7.1.1/elasticsearch-security.html) and 
 follow [its instructions for enabling X-Pack Security](https://www.elastic.co/guide/en/elasticsearch/reference/7.1/setup-xpack.html). 
 
 ### Enable Encrypted Communications
