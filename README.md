@@ -4,8 +4,7 @@ This plugin provides unique, short-lived credentials for Elasticsearch using nat
 ## Getting Started
 
 To take advantage of this plugin, you must first enable Elasticsearch's native realm of security by activating X-Pack. These
-instructions will walk you through doing this using ElasticSearch 7.1.1. At the time of writing, X-Pack was no longer a paid feature.
-To use it, you may need to enable a 30-day trial with Elasticsearch, or activate a paid version.
+instructions will walk you through doing this using ElasticSearch 7.1.1.
 
 ### Enable X-Pack Security in Elasticsearch
 
