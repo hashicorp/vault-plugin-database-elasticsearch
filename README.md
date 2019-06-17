@@ -17,7 +17,7 @@ follow [its instructions for enabling X-Pack Security](https://www.elastic.co/gu
 This plugin communicates with Elasticsearch's security API. In ES 7.1.1, you must enable TLS to consume that API.
 
 To set up TLS in Elasticsearch, first read [encrypted communications](https://www.elastic.co/guide/en/elastic-stack-overview/7.1.1/encrypting-communications.html)
-and go through its instructions on [encrypting HTTP client communications](https://www.elastic.co/guide/en/elasticsearch/reference/7.1/configuring-tls.html#tls-http). 
+and go through its instructions on [encrypting HTTP client communications](https://www.elastic.co/guide/en/elasticsearch/reference/7.1.1/configuring-tls.html#tls-http). 
 
 After enabling TLS on the Elasticsearch side, you'll need to convert the .p12 certificates you generated to other formats so they can be 
 used by Vault. [Here is an example using OpenSSL](https://stackoverflow.com/questions/15144046/converting-pkcs12-certificate-into-pem-using-openssl) 
