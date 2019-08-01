@@ -17,6 +17,7 @@ jobs:
           command: |
             echo 'GO111MODULE=on' >> $BASH_ENV
             echo 'export GOBIN=$GOPATH/bin' >> $BASH_ENV
+            echo 'export GOPATH=$(echo $GOPATH | tr ":" "\n" | head -1)' >> $BASH_ENV
       - run:
           name: "Move to GOPATH"
           command: |
