@@ -1,27 +1,34 @@
 version: 2
 jobs:
   build:
-    docker:
-    - image: circleci/golang:1.12
-
-    working_directory: /go/src/github.com/hashicorp/vault-plugin-database-elasticsearch
-
+    machine: true
+    working_directory: ~/src/github.com/hashicorp/vault-plugin-database-elasticsearch
     steps:
-    - checkout
-
-    - run:
-        name: "Setup Environment"
-        command: |
-          echo 'export GO111MODULE=on' >> $BASH_ENV
-
-    - run:
-        name: "Run Tests"
-        command: go test -v
-
-    - run:
-        name: "Install Gox"
-        command: go get github.com/mitchellh/gox
-
-    - run:
-        name: "Run Build"
-        command: ./scripts/build.sh
+      - checkout
+      - run:
+          name: "Update Go"
+          command: |
+            sudo rm -rf /usr/local/go
+            wget https://dl.google.com/go/go1.12.7.linux-amd64.tar.gz
+            sudo tar -xvf go1.12.7.linux-amd64.tar.gz
+            sudo mv go /usr/local
+      - run:
+          name: "Set Env Vars"
+          command: |
+            echo 'GO111MODULE=on' >> $BASH_ENV
+            echo 'export GOBIN=$GOPATH/bin' >> $BASH_ENV
+      - run:
+          name: "Move to GOPATH"
+          command: |
+            mkdir -p $GOPATH/src/github.com/hashicorp/vault-plugin-database-elasticsearch
+            mv /home/circleci/src/github.com/hashicorp/vault-plugin-database-elasticsearch/* $GOPATH/src/github.com/hashicorp/vault-plugin-database-elasticsearch
+      - run:
+          name: "Run Tests"
+          command: |
+            cd $GOPATH/src/github.com/hashicorp/vault-plugin-database-elasticsearch
+            make test
+      - run:
+          name: "Run Build"
+          command: |
+            cd $GOPATH/src/github.com/hashicorp/vault-plugin-database-elasticsearch
+            go build
