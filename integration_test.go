@@ -2,7 +2,6 @@ package elasticsearch
 
 import (
 	"bytes"
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/vault/sdk/database/newdbplugin"
+	dbtesting "github.com/hashicorp/vault/sdk/database/newdbplugin/testing"
 	"github.com/hashicorp/vault/sdk/helper/tlsutil"
 	"github.com/ory/dockertest"
 )
@@ -43,15 +43,15 @@ func TestIntegration_Container(t *testing.T) {
 		CaCert:        filepath.Join("testdata", "certs", "rootCA.pem"),
 		ClientCert:    filepath.Join("testdata", "certs", "client.pem"),
 		ClientKey:     filepath.Join("testdata", "certs", "client-key.pem"),
-		Elasticsearch: NewElasticsearch(),
+		Elasticsearch: &Elasticsearch{},
 		TestUsers:     make(map[string]newdbplugin.Statements),
 		TestCreds:     make(map[string]string),
 		tc:            tc,
 	}
-	t.Run("test init", env.TestElasticsearch_Init)
+	t.Run("test init", env.TestElasticsearch_Initialize)
 	t.Run("test create user", env.TestElasticsearch_NewUser)
 	t.Run("test delete user", env.TestElasticsearch_DeleteUser)
-	t.Run("test rotate root creds", env.TestElasticsearch_UpdateUser)
+	t.Run("test update user", env.TestElasticsearch_UpdateUser)
 }
 
 type IntegrationTestEnv struct {
@@ -64,7 +64,7 @@ type IntegrationTestEnv struct {
 	tc *ElasticSearchEnv
 }
 
-func (e *IntegrationTestEnv) TestElasticsearch_Init(t *testing.T) {
+func (e *IntegrationTestEnv) TestElasticsearch_Initialize(t *testing.T) {
 	req := newdbplugin.InitializeRequest{
 		Config: map[string]interface{}{
 			"username":    e.Username,
@@ -76,10 +76,7 @@ func (e *IntegrationTestEnv) TestElasticsearch_Init(t *testing.T) {
 		},
 		VerifyConnection: true,
 	}
-	resp, err := e.Elasticsearch.Initialize(context.Background(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	resp := dbtesting.AssertInitialize(t, e.Elasticsearch, req)
 	if len(resp.Config) != len(req.Config) {
 		t.Fatalf("expected %s, received %s", req.Config, resp.Config)
 	}
@@ -103,10 +100,7 @@ func (e *IntegrationTestEnv) TestElasticsearch_NewUser(t *testing.T) {
 		Statements: statements1,
 		Password:   password1,
 	}
-	resp1, err := e.Elasticsearch.NewUser(context.Background(), req1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	resp1 := dbtesting.AssertNewUser(t, e.Elasticsearch, req1)
 	if resp1.Username == "" {
 		t.Fatal("expected username")
 	}
@@ -129,16 +123,10 @@ func (e *IntegrationTestEnv) TestElasticsearch_NewUser(t *testing.T) {
 		Statements: statements2,
 		Password:   password2,
 	}
-	resp2, err := e.Elasticsearch.NewUser(context.Background(), req2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	resp2 := dbtesting.AssertNewUser(t, e.Elasticsearch, req2)
 	if resp2.Username == "" {
 		t.Fatal("expected username")
 	}
-	// if password2 == "" {
-	// 	t.Fatal("expected password")
-	// }
 	e.TestUsers[resp2.Username] = statements2
 	e.TestCreds[resp2.Username] = password2
 
@@ -153,9 +141,7 @@ func (e *IntegrationTestEnv) TestElasticsearch_DeleteUser(t *testing.T) {
 			Username:   username,
 			Statements: statements,
 		}
-		if _, err := e.Elasticsearch.DeleteUser(context.Background(), req); err != nil {
-			t.Fatal(err)
-		}
+		dbtesting.AssertDeleteUser(t, e.Elasticsearch, req)
 		password := e.TestCreds[username]
 		if e.tc.Authenticate(t, username, password) {
 			t.Errorf("want authentication failure, got successful authentication for user:%s with password:%s", username, password)
@@ -170,39 +156,17 @@ func (e *IntegrationTestEnv) TestElasticsearch_UpdateUser(t *testing.T) {
 			NewPassword: "new password",
 		},
 	}
-	// originalConfig := map[string]interface{}{
-	// 	"username":    e.Username,
-	// 	"password":    e.Password,
-	// 	"url":         e.URL,
-	// 	"ca_cert":     e.CaCert,
-	// 	"client_cert": e.ClientCert,
-	// 	"client_key":  e.ClientKey,
-	// }
 	if !e.tc.Authenticate(t, e.Username, e.Password) {
 		t.Errorf("want successful authentication, got failed authentication for user:%s with password:%s", e.Username, e.Password)
 	}
-	_, err := e.Elasticsearch.UpdateUser(context.Background(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	dbtesting.AssertUpdateUser(t, e.Elasticsearch, req)
 	if e.tc.Authenticate(t, e.Username, e.Password) {
 		t.Errorf("want authentication failure, got successful authentication for user:%s with password:%s", e.Username, e.Password)
 	}
 
-	// if len(originalConfig) != len(configToStore) {
-	// 	t.Fatalf("expected %s, received %s", originalConfig, configToStore)
-	// }
-	// for k, v := range originalConfig {
-	// 	if k == "password" {
-	// 		if configToStore[k] == v {
-	// 			t.Fatal("password should have changed")
-	// 		}
-	// 		continue
-	// 	}
-	// 	if configToStore[k] != v {
-	// 		t.Fatalf("for %s, expected %s but received %s", k, v, configToStore[k])
-	// 	}
-	// }
+	if !e.tc.Authenticate(t, e.Username, "new password") {
+		t.Errorf("want successful authentication, got failed authentication for user:%s with password:%s", e.Username, "new password")
+	}
 }
 
 func readCertFile(t *testing.T, filename string) []byte {

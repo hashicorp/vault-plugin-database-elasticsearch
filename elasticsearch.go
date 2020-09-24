@@ -11,25 +11,27 @@ import (
 
 	"github.com/hashicorp/errwrap"
 	multierror "github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/database/helper/credsutil"
 	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
 	"github.com/hashicorp/vault/sdk/database/newdbplugin"
 )
 
+var _ newdbplugin.Database = &Elasticsearch{}
+
+// New returns a new Elasticsearch instance
 func New() (interface{}, error) {
 	db := &Elasticsearch{}
 	return newdbplugin.NewDatabaseErrorSanitizerMiddleware(db, db.SecretValues), nil
 }
 
-func Run(apiTLSConfig *api.TLSConfig) error {
-	// TODO(tvoran): change this to use error sanitizer middleware?
-	newdbplugin.Serve(NewElasticsearch(), api.VaultPluginTLSProvider(apiTLSConfig))
+// Run starts serving the plugin
+func Run() error {
+	db, err := New()
+	if err != nil {
+		return err
+	}
+	newdbplugin.Serve(db.(newdbplugin.Database))
 	return nil
-}
-
-func NewElasticsearch() *Elasticsearch {
-	return &Elasticsearch{}
 }
 
 // Elasticsearch implements newdbplugin's Database interface.
@@ -43,6 +45,7 @@ type Elasticsearch struct {
 	config map[string]interface{}
 }
 
+// Type returns the TypeName for this backend
 func (es *Elasticsearch) Type() (string, error) {
 	return "elasticsearch", nil
 }
@@ -248,11 +251,6 @@ func removeEmpty(input []string) []string {
 
 // DeleteUser is used to delete users from elasticsearch
 func (es *Elasticsearch) DeleteUser(ctx context.Context, req newdbplugin.DeleteUserRequest) (newdbplugin.DeleteUserResponse, error) {
-	stmt, err := newCreationStatement(req.Statements)
-	if err != nil {
-		return newdbplugin.DeleteUserResponse{}, errwrap.Wrapf("unable to read creation_statements: {{err}}", err)
-	}
-
 	// Don't let anyone write the config while we're using it for our current client.
 	es.mux.RLock()
 	defer es.mux.RUnlock()
@@ -263,17 +261,17 @@ func (es *Elasticsearch) DeleteUser(ctx context.Context, req newdbplugin.DeleteU
 	}
 
 	var errs error
-	if len(stmt.RoleToCreate) > 0 {
-		// If the role already doesn't exist because it was successfully deleted on a previous
-		// attempt to run this code, there will be no error, so it's harmless to try.
-		if err := client.DeleteRole(ctx, req.Username); err != nil {
-			errs = multierror.Append(errs, errwrap.Wrapf(fmt.Sprintf("unable to delete role name %s: {{err}}", req.Username), err))
-		}
+	// If the role already doesn't exist, either it wasn't created for this
+	// user, or it was successfully deleted on a previous attempt to run this
+	// code, there will be no error, so it's harmless to try.
+	if err := client.DeleteRole(ctx, req.Username); err != nil {
+		errs = multierror.Append(errs, errwrap.Wrapf(fmt.Sprintf("unable to delete role name %s: {{err}}", req.Username), err))
 	}
+
 	// Same with the user. If it was already deleted on a previous attempt, there won't be an
 	// error.
 	if err := client.DeleteUser(ctx, req.Username); err != nil {
-		errs = multierror.Append(errs, errwrap.Wrapf(fmt.Sprintf("unable to create user name %s: {{err}}", req.Username), err))
+		errs = multierror.Append(errs, errwrap.Wrapf(fmt.Sprintf("unable to delete user name %s: {{err}}", req.Username), err))
 	}
 	return newdbplugin.DeleteUserResponse{}, errs
 }
@@ -281,10 +279,6 @@ func (es *Elasticsearch) DeleteUser(ctx context.Context, req newdbplugin.DeleteU
 // UpdateUser doesn't require any statements from the user because it's not configurable in any
 // way. We simply generate a new password and hit a pre-defined Elasticsearch REST API to rotate them.
 func (es *Elasticsearch) UpdateUser(ctx context.Context, req newdbplugin.UpdateUserRequest) (newdbplugin.UpdateUserResponse, error) {
-	// newPassword, err := es.credentialProducer.GeneratePassword()
-	// if err != nil {
-	// 	return nil, errwrap.Wrapf("unable to generate root password: {{err}}", err)
-	// }
 
 	// Don't let anyone read or write the config while we're in the process of rotating the password.
 	es.mux.Lock()
@@ -296,7 +290,7 @@ func (es *Elasticsearch) UpdateUser(ctx context.Context, req newdbplugin.UpdateU
 	}
 
 	if req.Password != nil {
-		if err := client.ChangePassword(ctx, es.config["username"].(string), req.Password.NewPassword); err != nil {
+		if err := client.ChangePassword(ctx, req.Username, req.Password.NewPassword); err != nil {
 			return newdbplugin.UpdateUserResponse{}, fmt.Errorf("unable to change password: %w", err)
 		}
 
@@ -305,8 +299,8 @@ func (es *Elasticsearch) UpdateUser(ctx context.Context, req newdbplugin.UpdateU
 	return newdbplugin.UpdateUserResponse{}, nil
 }
 
+// Close for Elasticsearch is a NOOP, nothing to close
 func (es *Elasticsearch) Close() error {
-	// NOOP, nothing to close.
 	return nil
 }
 

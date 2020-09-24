@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -51,7 +52,7 @@ $ export CA_CERT=/usr/share/ca-certificates/extra/elastic-stack-ca.crt.pem
 $ export CLIENT_CERT=$ES_HOME/config/certs/elastic-certificates.crt.pem
 $ export CLIENT_KEY=$ES_HOME/config/certs/elastic-certificates.key.pem
 */
-func Test_Integration(t *testing.T) {
+func Test_Acceptance(t *testing.T) {
 
 	if os.Getenv("VAULT_ACC") != "1" {
 		t.SkipNow()
@@ -127,7 +128,8 @@ func (e *Environment) Test_WriteConfig(t *testing.T) {
 	}
 	defer writeResp.Body.Close()
 	if writeResp.StatusCode != 200 {
-		t.Fatalf("expected 200 but received %d", writeResp.StatusCode)
+		body, _ := ioutil.ReadAll(writeResp.Body)
+		t.Fatalf("expected 200 but received %d: %s", writeResp.StatusCode, string(body))
 	}
 
 	// Read it and make sure it's holding expected values.
@@ -412,7 +414,8 @@ func (e *Environment) Test_RevokeCredentials(t *testing.T) {
 	}
 	defer firstRevocation.Body.Close()
 	if firstRevocation.StatusCode != 204 {
-		t.Fatalf("expected 204 but received %d", firstRevocation.StatusCode)
+		body, _ := ioutil.ReadAll(firstRevocation.Body)
+		t.Fatalf("expected 204 but received %d: %s", firstRevocation.StatusCode, string(body))
 	}
 
 	secondRevocation, err := e.doVaultReq(http.MethodPut, "/v1/sys/leases/revoke", map[string]interface{}{

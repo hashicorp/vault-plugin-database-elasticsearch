@@ -13,7 +13,7 @@ func main() {
 	flags := apiClientMeta.FlagSet()
 	flags.Parse(os.Args[1:])
 
-	if err := elasticsearch.Run(apiClientMeta.GetTLSConfig()); err != nil {
+	if err := elasticsearch.Run(); err != nil {
 		log.Println(err)
 		os.Exit(1)
 	}
