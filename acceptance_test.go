@@ -51,6 +51,15 @@ $ export ES_PASSWORD=myPa55word
 $ export CA_CERT=/usr/share/ca-certificates/extra/elastic-stack-ca.crt.pem
 $ export CLIENT_CERT=$ES_HOME/config/certs/elastic-certificates.crt.pem
 $ export CLIENT_KEY=$ES_HOME/config/certs/elastic-certificates.key.pem
+
+Also create a 'vault' role for Test_ExternallyDefinedRole, ex:
+
+$ curl \
+    -k -X POST \
+    -H "Content-Type: application/json" \
+    -d '{"cluster": ["manage_security"]}' \
+    https://elastic:$ES_PASSWORD@localhost:9200/_xpack/security/role/vault
+
 */
 func Test_Acceptance(t *testing.T) {
 
@@ -246,18 +255,23 @@ func (e *Environment) Test_InternallyDefinedRole(t *testing.T) {
 		t.Fatalf("%s didn't return a password", credData)
 	}
 
-	// Test the new credentials by deleting this role and user.
+	// Test the new credentials by deleting this user.
 	configCopy := copyMap(e.Config)
 	configCopy["username"] = username
 	configCopy["password"] = password
-	client, err := buildClient(configCopy)
+	userClient, err := buildClient(configCopy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := userClient.DeleteUser(context.Background(), username); err != nil {
+		t.Fatal(err)
+	}
+	// Delete the role using the root creds
+	client, err := buildClient(e.Config)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := client.DeleteRole(context.Background(), username); err != nil {
-		t.Fatal(err)
-	}
-	if err := client.DeleteUser(context.Background(), username); err != nil {
 		t.Fatal(err)
 	}
 }
