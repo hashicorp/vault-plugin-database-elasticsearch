@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
-	"time"
 
 	"github.com/hashicorp/errwrap"
 	multierror "github.com/hashicorp/go-multierror"
@@ -138,7 +136,12 @@ func (es *Elasticsearch) Initialize(ctx context.Context, req newdbplugin.Initial
 // and it's the first time anything is touched from `$ vault write database/roles/:role-name`.
 // This is likely to be the highest-throughput method for this plugin.
 func (es *Elasticsearch) NewUser(ctx context.Context, req newdbplugin.NewUserRequest) (newdbplugin.NewUserResponse, error) {
-	username, err := newUsername(req.UsernameConfig)
+	username, err := credsutil.GenerateUsername(
+		credsutil.DisplayName(req.UsernameConfig.DisplayName, 15),
+		credsutil.RoleName(req.UsernameConfig.RoleName, 15),
+		credsutil.MaxLength(100),
+		credsutil.Separator("-"),
+	)
 	if err != nil {
 		return newdbplugin.NewUserResponse{}, errwrap.Wrapf(fmt.Sprintf("unable to generate username for %q: {{err}}", req.UsernameConfig), err)
 	}
@@ -179,74 +182,6 @@ func (es *Elasticsearch) NewUser(ctx context.Context, req newdbplugin.NewUserReq
 		Username: username,
 	}
 	return resp, nil
-}
-
-// copied from the mongodb PR
-func newUsername(config newdbplugin.UsernameMetadata) (string, error) {
-	displayName := trunc(config.DisplayName, 15)
-	roleName := trunc(config.RoleName, 15)
-
-	userUUID, err := credsutil.RandomAlphaNumeric(20, false)
-	if err != nil {
-		return "", err
-	}
-
-	now := fmt.Sprint(time.Now().Unix())
-
-	parts := []string{
-		"v",
-		displayName,
-		roleName,
-		userUUID,
-		now,
-	}
-	username := joinNonEmpty("-", parts...)
-	username = trunc(username, 100)
-
-	return username, nil
-}
-
-// copied from the mongodb PR
-func trunc(str string, l int) string {
-	if len(str) < l {
-		return str
-	}
-	return str[:l]
-}
-
-// copied from the mongodb PR
-func joinNonEmpty(sep string, vals ...string) string {
-	if sep == "" {
-		return strings.Join(vals, sep)
-	}
-	switch len(vals) {
-	case 0:
-		return ""
-	case 1:
-		return vals[0]
-	}
-	builder := &strings.Builder{}
-	for _, val := range vals {
-		if val == "" {
-			continue
-		}
-		if builder.Len() > 0 {
-			builder.WriteString(sep)
-		}
-		builder.WriteString(val)
-	}
-	return builder.String()
-}
-
-// copied from the mongodb PR
-func removeEmpty(input []string) []string {
-	output := []string{}
-	for _, val := range input {
-		if val != "" {
-			output = append(output, val)
-		}
-	}
-	return output
 }
 
 // DeleteUser is used to delete users from elasticsearch

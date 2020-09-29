@@ -26,8 +26,8 @@ export VAULT_TOKEN=root
 # export ES_URL=https://localhost:9200
 # export ES_USERNAME=vault
 # export ES_PASSWORD=myPa55word
-# export CA_CERT=$PWD/scripts/certs/certificates/ca/ca.crt
-# export CLIENT_CERT=$PWD/scripts/certs/certificates/es01/es01.crt
-# export CLIENT_KEY=$PWD/scripts/certs/certificates/es01/es01.key
+# export CA_CERT=$PWD/scripts/certs/ca/ca.crt
+# export CLIENT_CERT=$PWD/scripts/certs/es01/es01.crt
+# export CLIENT_KEY=$PWD/scripts/certs/es01/es01.key
 
 go test -v ./... -run Test_Acceptance
