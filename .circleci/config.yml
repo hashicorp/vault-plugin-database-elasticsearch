@@ -3,14 +3,16 @@ jobs:
   build:
     machine: true
     working_directory: ~/src/github.com/hashicorp/vault-plugin-database-elasticsearch
+    environment:
+      GO_VERSION: 1.14.9
     steps:
       - checkout
       - run:
           name: "Update Go"
           command: |
             sudo rm -rf /usr/local/go
-            wget https://dl.google.com/go/go1.12.7.linux-amd64.tar.gz
-            sudo tar -xvf go1.12.7.linux-amd64.tar.gz
+            wget https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz
+            sudo tar -xvf go${GO_VERSION}.linux-amd64.tar.gz
             sudo mv go /usr/local
       - run:
           name: "Set Env Vars"
