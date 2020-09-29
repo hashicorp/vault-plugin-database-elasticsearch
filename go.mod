@@ -1,6 +1,6 @@
 module github.com/hashicorp/vault-plugin-database-elasticsearch
 
-go 1.12
+go 1.14
 
 require (
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
