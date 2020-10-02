@@ -143,7 +143,7 @@ func (es *Elasticsearch) NewUser(ctx context.Context, req newdbplugin.NewUserReq
 		credsutil.Separator("-"),
 	)
 	if err != nil {
-		return newdbplugin.NewUserResponse{}, errwrap.Wrapf(fmt.Sprintf("unable to generate username for %q: {{err}}", req.UsernameConfig), err)
+		return newdbplugin.NewUserResponse{}, fmt.Errorf("unable to generate username for %q: %w", req.UsernameConfig, err)
 	}
 
 	stmt, err := newCreationStatement(req.Statements)
@@ -195,20 +195,20 @@ func (es *Elasticsearch) DeleteUser(ctx context.Context, req newdbplugin.DeleteU
 		return newdbplugin.DeleteUserResponse{}, errwrap.Wrapf("unable to get client: {{err}}", err)
 	}
 
-	var errs error
+	var errs *multierror.Error
 	// If the role already doesn't exist, either it wasn't created for this
 	// user, or it was successfully deleted on a previous attempt to run this
 	// code, there will be no error, so it's harmless to try.
 	if err := client.DeleteRole(ctx, req.Username); err != nil {
-		errs = multierror.Append(errs, errwrap.Wrapf(fmt.Sprintf("unable to delete role name %s: {{err}}", req.Username), err))
+		errs = multierror.Append(errs, fmt.Errorf("unable to delete role name %s: %w", req.Username, err)
 	}
 
 	// Same with the user. If it was already deleted on a previous attempt, there won't be an
 	// error.
 	if err := client.DeleteUser(ctx, req.Username); err != nil {
-		errs = multierror.Append(errs, errwrap.Wrapf(fmt.Sprintf("unable to delete user name %s: {{err}}", req.Username), err))
+		errs = multierror.Append(errs, fmt.Errorf("unable to delete user name %s: %w", req.Username, err)
 	}
-	return newdbplugin.DeleteUserResponse{}, errs
+	return newdbplugin.DeleteUserResponse{}, errs.ErrorOrNil()
 }
 
 // UpdateUser doesn't require any statements from the user because it's not configurable in any
