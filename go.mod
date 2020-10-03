@@ -12,7 +12,7 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.6.6
 	github.com/hashicorp/go-rootcerts v1.0.1
 	github.com/hashicorp/vault/api v1.0.5-0.20200519221902-385fac77e20f
-	github.com/hashicorp/vault/sdk v0.1.14-0.20200929225434-b2927012ba91
+	github.com/hashicorp/vault/sdk v0.1.14-0.20200930230837-9978ba802fcd
 	github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d // indirect
 	github.com/kr/pretty v0.2.1 // indirect
 	github.com/lib/pq v1.2.0 // indirect

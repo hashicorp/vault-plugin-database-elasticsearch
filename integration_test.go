@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -76,14 +77,11 @@ func (e *IntegrationTestEnv) TestElasticsearch_Initialize(t *testing.T) {
 		},
 		VerifyConnection: true,
 	}
+	expectedConfig := copyMap(req.Config)
 	resp := dbtesting.AssertInitialize(t, e.Elasticsearch, req)
-	if len(resp.Config) != len(req.Config) {
-		t.Fatalf("expected %s, received %s", req.Config, resp.Config)
-	}
-	for k, v := range req.Config {
-		if resp.Config[k] != v {
-			t.Fatalf("for %s, expected %s but received %s", k, v, resp.Config[k])
-		}
+
+	if !reflect.DeepEqual(resp.Config, expectedConfig) {
+		t.Fatalf("Actual config: %#v\nExpected config: %#v", resp.Config, expectedConfig)
 	}
 }
 

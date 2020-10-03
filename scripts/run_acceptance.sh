@@ -7,8 +7,8 @@ vault server \
   -log-level=debug \
   -dev \
   -dev-ha -dev-transactional -dev-root-token-id=root -dev-plugin-dir=$PWD/bin &
-sleep 2
 VAULT_PID=$!
+sleep 2
 
 function cleanup {
   echo ""

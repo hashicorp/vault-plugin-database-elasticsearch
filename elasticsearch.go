@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/errwrap"
 	multierror "github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/database/helper/credsutil"
 	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
 	"github.com/hashicorp/vault/sdk/database/newdbplugin"
@@ -23,12 +24,12 @@ func New() (interface{}, error) {
 }
 
 // Run starts serving the plugin
-func Run() error {
+func Run(apiTLSConfig *api.TLSConfig) error {
 	db, err := New()
 	if err != nil {
 		return err
 	}
-	newdbplugin.Serve(db.(newdbplugin.Database))
+	newdbplugin.Serve(db.(newdbplugin.Database), api.VaultPluginTLSProvider(apiTLSConfig))
 	return nil
 }
 
@@ -200,13 +201,13 @@ func (es *Elasticsearch) DeleteUser(ctx context.Context, req newdbplugin.DeleteU
 	// user, or it was successfully deleted on a previous attempt to run this
 	// code, there will be no error, so it's harmless to try.
 	if err := client.DeleteRole(ctx, req.Username); err != nil {
-		errs = multierror.Append(errs, fmt.Errorf("unable to delete role name %s: %w", req.Username, err)
+		errs = multierror.Append(errs, fmt.Errorf("unable to delete role name %s: %w", req.Username, err))
 	}
 
 	// Same with the user. If it was already deleted on a previous attempt, there won't be an
 	// error.
 	if err := client.DeleteUser(ctx, req.Username); err != nil {
-		errs = multierror.Append(errs, fmt.Errorf("unable to delete user name %s: %w", req.Username, err)
+		errs = multierror.Append(errs, fmt.Errorf("unable to delete user name %s: %w", req.Username, err))
 	}
 	return newdbplugin.DeleteUserResponse{}, errs.ErrorOrNil()
 }
@@ -228,7 +229,8 @@ func (es *Elasticsearch) UpdateUser(ctx context.Context, req newdbplugin.UpdateU
 		if err := client.ChangePassword(ctx, req.Username, req.Password.NewPassword); err != nil {
 			return newdbplugin.UpdateUserResponse{}, fmt.Errorf("unable to change password: %w", err)
 		}
-
+		// Note: changing the expiration of a user is a no-op for Elasticsearch,
+		// and therefore ignored here
 	}
 
 	return newdbplugin.UpdateUserResponse{}, nil
@@ -243,9 +245,12 @@ func newCreationStatement(statements newdbplugin.Statements) (*creationStatement
 	if len(statements.Commands) == 0 {
 		return nil, dbutil.ErrEmptyCreationStatement
 	}
+	if len(statements.Commands) > 1 {
+		return nil, fmt.Errorf("only 1 creation statement supported for creation")
+	}
 	stmt := &creationStatement{}
 	if err := json.Unmarshal([]byte(statements.Commands[0]), stmt); err != nil {
-		return nil, errwrap.Wrapf(fmt.Sprintf("unable to unmarshal %s: {{err}}", []byte(statements.Commands[0])), err)
+		return nil, fmt.Errorf("unable to unmarshal %s: %w", []byte(statements.Commands[0]), err)
 	}
 	if len(stmt.PreexistingRoles) > 0 && len(stmt.RoleToCreate) > 0 {
 		return nil, errors.New(`"elasticsearch_roles" and "elasticsearch_role_definition" are mutually exclusive`)
