@@ -1,14 +1,14 @@
 package elasticsearch
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/vault-plugin-database-elasticsearch/mock"
-	"github.com/hashicorp/vault/sdk/database/dbplugin"
+	"github.com/hashicorp/vault/sdk/database/newdbplugin"
+	dbtesting "github.com/hashicorp/vault/sdk/database/newdbplugin/testing"
 )
 
 func TestElasticsearch(t *testing.T) {
@@ -20,23 +20,22 @@ func TestElasticsearch(t *testing.T) {
 		Username:      esAPI.Username(),
 		Password:      esAPI.Password(),
 		URL:           ts.URL,
-		Elasticsearch: NewElasticsearch(),
-		TestUsers:     make(map[string]dbplugin.Statements),
+		Elasticsearch: &Elasticsearch{},
+		TestUsers:     make(map[string]newdbplugin.Statements),
 	}
 
 	t.Run("test type", env.TestElasticsearch_Type)
-	t.Run("test init", env.TestElasticsearch_Init)
 	t.Run("test initialize", env.TestElasticsearch_Initialize)
-	t.Run("test create user", env.TestElasticsearch_CreateUser)
-	t.Run("test revoke user", env.TestElasticsearch_RevokeUser)
-	t.Run("test rotate root creds", env.TestElasticsearch_RotateRootCredentials)
+	t.Run("test new user", env.TestElasticsearch_NewUser)
+	t.Run("test delete user", env.TestElasticsearch_DeleteUser)
+	t.Run("test update user", env.TestElasticsearch_UpdateUser)
 }
 
 type UnitTestEnv struct {
 	Username, Password, URL string
 	Elasticsearch           *Elasticsearch
 
-	TestUsers map[string]dbplugin.Statements
+	TestUsers map[string]newdbplugin.Statements
 }
 
 func (e *UnitTestEnv) TestElasticsearch_Type(t *testing.T) {
@@ -47,105 +46,75 @@ func (e *UnitTestEnv) TestElasticsearch_Type(t *testing.T) {
 	}
 }
 
-func (e *UnitTestEnv) TestElasticsearch_Init(t *testing.T) {
-	config := map[string]interface{}{
-		"username": e.Username,
-		"password": e.Password,
-		"url":      e.URL,
-	}
-	configToStore, err := e.Elasticsearch.Init(context.Background(), config, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(configToStore) != len(config) {
-		t.Fatalf("expected %s, received %s", config, configToStore)
-	}
-	for k, v := range config {
-		if configToStore[k] != v {
-			t.Fatalf("for %s, expected %s but received %s", k, v, configToStore[k])
-		}
-	}
-}
-
 func (e *UnitTestEnv) TestElasticsearch_Initialize(t *testing.T) {
-	config := map[string]interface{}{
-		"username": e.Username,
-		"password": e.Password,
-		"url":      e.URL,
+	req := newdbplugin.InitializeRequest{
+		Config: map[string]interface{}{
+			"username": e.Username,
+			"password": e.Password,
+			"url":      e.URL,
+		},
+		VerifyConnection: true,
 	}
-	if err := e.Elasticsearch.Initialize(context.Background(), config, true); err != nil {
-		t.Fatal(err)
+	expectedConfig := copyMap(req.Config)
+	resp := dbtesting.AssertInitialize(t, e.Elasticsearch, req)
+
+	if !reflect.DeepEqual(resp.Config, expectedConfig) {
+		t.Fatalf("Actual config: %#v\nExpected config: %#v", resp.Config, expectedConfig)
 	}
 }
 
-func (e *UnitTestEnv) TestElasticsearch_CreateUser(t *testing.T) {
-	statements1 := dbplugin.Statements{
-		Creation: []string{`{"elasticsearch_role_definition": {"indices": [{"names":["*"], "privileges":["read"]}]}}`},
+func (e *UnitTestEnv) TestElasticsearch_NewUser(t *testing.T) {
+	statements1 := newdbplugin.Statements{
+		Commands: []string{`{"elasticsearch_role_definition": {"indices": [{"names":["*"], "privileges":["read"]}]}}`},
 	}
-	usernameConfig := dbplugin.UsernameConfig{
-		DisplayName: "display-name",
-		RoleName:    "role-name",
+	req1 := newdbplugin.NewUserRequest{
+		UsernameConfig: newdbplugin.UsernameMetadata{
+			DisplayName: "display-name",
+			RoleName:    "role-name",
+		},
+		Statements: statements1,
 	}
-	username1, password1, err := e.Elasticsearch.CreateUser(context.Background(), statements1, usernameConfig, time.Time{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if username1 == "" {
+	resp1 := dbtesting.AssertNewUser(t, e.Elasticsearch, req1)
+	if resp1.Username == "" {
 		t.Fatal("expected username")
 	}
-	if password1 == "" {
-		t.Fatal("expected password")
-	}
-	e.TestUsers[username1] = statements1
+	e.TestUsers[resp1.Username] = statements1
 
-	statements2 := dbplugin.Statements{
-		Creation: []string{`{"elasticsearch_roles": ["vault"]}`},
+	statements2 := newdbplugin.Statements{
+		Commands: []string{`{"elasticsearch_roles": ["vault"]}`},
 	}
-	username2, password2, err := e.Elasticsearch.CreateUser(context.Background(), statements2, usernameConfig, time.Time{})
-	if err != nil {
-		t.Fatal(err)
+	req2 := newdbplugin.NewUserRequest{
+		UsernameConfig: newdbplugin.UsernameMetadata{
+			DisplayName: "display-name",
+			RoleName:    "role-name",
+		},
+		Statements: statements2,
 	}
-	if username2 == "" {
+	resp2 := dbtesting.AssertNewUser(t, e.Elasticsearch, req2)
+	if resp2.Username == "" {
 		t.Fatal("expected username")
 	}
-	if password2 == "" {
-		t.Fatal("expected password")
-	}
-	e.TestUsers[username2] = statements2
+	e.TestUsers[resp2.Username] = statements2
 }
 
-func (e *UnitTestEnv) TestElasticsearch_RevokeUser(t *testing.T) {
+func (e *UnitTestEnv) TestElasticsearch_DeleteUser(t *testing.T) {
 	for username, statements := range e.TestUsers {
-		if err := e.Elasticsearch.RevokeUser(context.Background(), statements, username); err != nil {
-			t.Fatal(err)
+		req := newdbplugin.DeleteUserRequest{
+			Username:   username,
+			Statements: statements,
 		}
+		dbtesting.AssertDeleteUser(t, e.Elasticsearch, req)
 	}
 }
 
-func (e *UnitTestEnv) TestElasticsearch_RotateRootCredentials(t *testing.T) {
-	originalConfig := map[string]interface{}{
-		"username": e.Username,
-		"password": e.Password,
-		"url":      e.URL,
+func (e *UnitTestEnv) TestElasticsearch_UpdateUser(t *testing.T) {
+	req := newdbplugin.UpdateUserRequest{
+		Username: e.Username,
+		Password: &newdbplugin.ChangePassword{
+			NewPassword: "new password",
+		},
 	}
-	configToStore, err := e.Elasticsearch.RotateRootCredentials(context.Background(), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(originalConfig) != len(configToStore) {
-		t.Fatalf("expected %s, received %s", originalConfig, configToStore)
-	}
-	for k, v := range originalConfig {
-		if k == "password" {
-			if configToStore[k] == v {
-				t.Fatal("password should have changed")
-			}
-			continue
-		}
-		if configToStore[k] != v {
-			t.Fatalf("for %s, expected %s but received %s", k, v, configToStore[k])
-		}
-	}
+	dbtesting.AssertUpdateUser(t, e.Elasticsearch, req)
 }
 
 func TestElasticsearch_SecretValues(t *testing.T) {
@@ -157,7 +126,7 @@ func TestElasticsearch_SecretValues(t *testing.T) {
 		},
 	}
 	val := es.SecretValues()
-	if val["buzz"] != nil {
+	if val["buzz"] != "" {
 		t.Fatal(`buzz isn't secret and shouldn't be in the map`)
 	}
 	if val["dont-show-me!"] != "[password]" {

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -50,8 +51,17 @@ $ export ES_PASSWORD=myPa55word
 $ export CA_CERT=/usr/share/ca-certificates/extra/elastic-stack-ca.crt.pem
 $ export CLIENT_CERT=$ES_HOME/config/certs/elastic-certificates.crt.pem
 $ export CLIENT_KEY=$ES_HOME/config/certs/elastic-certificates.key.pem
+
+Also create a 'vault' role for Test_ExternallyDefinedRole, ex:
+
+$ curl \
+    -k -X POST \
+    -H "Content-Type: application/json" \
+    -d '{"cluster": ["manage_security"]}' \
+    https://elastic:$ES_PASSWORD@localhost:9200/_xpack/security/role/vault
+
 */
-func Test_Integration(t *testing.T) {
+func Test_Acceptance(t *testing.T) {
 
 	if os.Getenv("VAULT_ACC") != "1" {
 		t.SkipNow()
@@ -127,7 +137,8 @@ func (e *Environment) Test_WriteConfig(t *testing.T) {
 	}
 	defer writeResp.Body.Close()
 	if writeResp.StatusCode != 200 {
-		t.Fatalf("expected 200 but received %d", writeResp.StatusCode)
+		body, _ := ioutil.ReadAll(writeResp.Body)
+		t.Fatalf("expected 200 but received %d: %s", writeResp.StatusCode, string(body))
 	}
 
 	// Read it and make sure it's holding expected values.
@@ -244,18 +255,23 @@ func (e *Environment) Test_InternallyDefinedRole(t *testing.T) {
 		t.Fatalf("%s didn't return a password", credData)
 	}
 
-	// Test the new credentials by deleting this role and user.
+	// Test the new credentials by deleting this user.
 	configCopy := copyMap(e.Config)
 	configCopy["username"] = username
 	configCopy["password"] = password
-	client, err := buildClient(configCopy)
+	userClient, err := buildClient(configCopy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := userClient.DeleteUser(context.Background(), username); err != nil {
+		t.Fatal(err)
+	}
+	// Delete the role using the root creds
+	client, err := buildClient(e.Config)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := client.DeleteRole(context.Background(), username); err != nil {
-		t.Fatal(err)
-	}
-	if err := client.DeleteUser(context.Background(), username); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -412,7 +428,8 @@ func (e *Environment) Test_RevokeCredentials(t *testing.T) {
 	}
 	defer firstRevocation.Body.Close()
 	if firstRevocation.StatusCode != 204 {
-		t.Fatalf("expected 204 but received %d", firstRevocation.StatusCode)
+		body, _ := ioutil.ReadAll(firstRevocation.Body)
+		t.Fatalf("expected 204 but received %d: %s", firstRevocation.StatusCode, string(body))
 	}
 
 	secondRevocation, err := e.doVaultReq(http.MethodPut, "/v1/sys/leases/revoke", map[string]interface{}{
