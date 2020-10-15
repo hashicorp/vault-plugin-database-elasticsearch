@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/vault-plugin-database-elasticsearch/mock"
-	"github.com/hashicorp/vault/sdk/database/newdbplugin"
-	dbtesting "github.com/hashicorp/vault/sdk/database/newdbplugin/testing"
+	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
+	dbtesting "github.com/hashicorp/vault/sdk/database/dbplugin/v5/testing"
 )
 
 func TestElasticsearch(t *testing.T) {
@@ -21,7 +21,7 @@ func TestElasticsearch(t *testing.T) {
 		Password:      esAPI.Password(),
 		URL:           ts.URL,
 		Elasticsearch: &Elasticsearch{},
-		TestUsers:     make(map[string]newdbplugin.Statements),
+		TestUsers:     make(map[string]dbplugin.Statements),
 	}
 
 	t.Run("test type", env.TestElasticsearch_Type)
@@ -35,7 +35,7 @@ type UnitTestEnv struct {
 	Username, Password, URL string
 	Elasticsearch           *Elasticsearch
 
-	TestUsers map[string]newdbplugin.Statements
+	TestUsers map[string]dbplugin.Statements
 }
 
 func (e *UnitTestEnv) TestElasticsearch_Type(t *testing.T) {
@@ -47,7 +47,7 @@ func (e *UnitTestEnv) TestElasticsearch_Type(t *testing.T) {
 }
 
 func (e *UnitTestEnv) TestElasticsearch_Initialize(t *testing.T) {
-	req := newdbplugin.InitializeRequest{
+	req := dbplugin.InitializeRequest{
 		Config: map[string]interface{}{
 			"username": e.Username,
 			"password": e.Password,
@@ -64,11 +64,11 @@ func (e *UnitTestEnv) TestElasticsearch_Initialize(t *testing.T) {
 }
 
 func (e *UnitTestEnv) TestElasticsearch_NewUser(t *testing.T) {
-	statements1 := newdbplugin.Statements{
+	statements1 := dbplugin.Statements{
 		Commands: []string{`{"elasticsearch_role_definition": {"indices": [{"names":["*"], "privileges":["read"]}]}}`},
 	}
-	req1 := newdbplugin.NewUserRequest{
-		UsernameConfig: newdbplugin.UsernameMetadata{
+	req1 := dbplugin.NewUserRequest{
+		UsernameConfig: dbplugin.UsernameMetadata{
 			DisplayName: "display-name",
 			RoleName:    "role-name",
 		},
@@ -80,11 +80,11 @@ func (e *UnitTestEnv) TestElasticsearch_NewUser(t *testing.T) {
 	}
 	e.TestUsers[resp1.Username] = statements1
 
-	statements2 := newdbplugin.Statements{
+	statements2 := dbplugin.Statements{
 		Commands: []string{`{"elasticsearch_roles": ["vault"]}`},
 	}
-	req2 := newdbplugin.NewUserRequest{
-		UsernameConfig: newdbplugin.UsernameMetadata{
+	req2 := dbplugin.NewUserRequest{
+		UsernameConfig: dbplugin.UsernameMetadata{
 			DisplayName: "display-name",
 			RoleName:    "role-name",
 		},
@@ -99,7 +99,7 @@ func (e *UnitTestEnv) TestElasticsearch_NewUser(t *testing.T) {
 
 func (e *UnitTestEnv) TestElasticsearch_DeleteUser(t *testing.T) {
 	for username, statements := range e.TestUsers {
-		req := newdbplugin.DeleteUserRequest{
+		req := dbplugin.DeleteUserRequest{
 			Username:   username,
 			Statements: statements,
 		}
@@ -108,9 +108,9 @@ func (e *UnitTestEnv) TestElasticsearch_DeleteUser(t *testing.T) {
 }
 
 func (e *UnitTestEnv) TestElasticsearch_UpdateUser(t *testing.T) {
-	req := newdbplugin.UpdateUserRequest{
+	req := dbplugin.UpdateUserRequest{
 		Username: e.Username,
-		Password: &newdbplugin.ChangePassword{
+		Password: &dbplugin.ChangePassword{
 			NewPassword: "new password",
 		},
 	}
