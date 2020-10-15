@@ -10,17 +10,17 @@ import (
 	"github.com/hashicorp/errwrap"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/vault/api"
+	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
 	"github.com/hashicorp/vault/sdk/database/helper/credsutil"
 	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
-	"github.com/hashicorp/vault/sdk/database/newdbplugin"
 )
 
-var _ newdbplugin.Database = &Elasticsearch{}
+var _ dbplugin.Database = &Elasticsearch{}
 
 // New returns a new Elasticsearch instance
 func New() (interface{}, error) {
 	db := &Elasticsearch{}
-	return newdbplugin.NewDatabaseErrorSanitizerMiddleware(db, db.SecretValues), nil
+	return dbplugin.NewDatabaseErrorSanitizerMiddleware(db, db.SecretValues), nil
 }
 
 // Run starts serving the plugin
@@ -29,11 +29,11 @@ func Run(apiTLSConfig *api.TLSConfig) error {
 	if err != nil {
 		return err
 	}
-	newdbplugin.Serve(db.(newdbplugin.Database), api.VaultPluginTLSProvider(apiTLSConfig))
+	dbplugin.Serve(db.(dbplugin.Database), api.VaultPluginTLSProvider(apiTLSConfig))
 	return nil
 }
 
-// Elasticsearch implements newdbplugin's Database interface.
+// Elasticsearch implements dbplugin's Database interface.
 type Elasticsearch struct {
 
 	// This protects the config from races while also allowing multiple threads
@@ -75,17 +75,17 @@ func (es *Elasticsearch) SecretValues() map[string]string {
 
 // Initialize is called on `$ vault write database/config/:db-name`,
 // or when you do a creds call after Vault's been restarted.
-func (es *Elasticsearch) Initialize(ctx context.Context, req newdbplugin.InitializeRequest) (newdbplugin.InitializeResponse, error) {
+func (es *Elasticsearch) Initialize(ctx context.Context, req dbplugin.InitializeRequest) (dbplugin.InitializeResponse, error) {
 
 	// Validate the config to provide immediate feedback to the user.
 	// Ensure required string fields are provided in the expected format.
 	for _, requiredField := range []string{"username", "password", "url"} {
 		raw, ok := req.Config[requiredField]
 		if !ok {
-			return newdbplugin.InitializeResponse{}, fmt.Errorf(`%q must be provided`, requiredField)
+			return dbplugin.InitializeResponse{}, fmt.Errorf(`%q must be provided`, requiredField)
 		}
 		if _, ok := raw.(string); !ok {
-			return newdbplugin.InitializeResponse{}, fmt.Errorf(`%q must be a string`, requiredField)
+			return dbplugin.InitializeResponse{}, fmt.Errorf(`%q must be a string`, requiredField)
 		}
 	}
 
@@ -96,21 +96,21 @@ func (es *Elasticsearch) Initialize(ctx context.Context, req newdbplugin.Initial
 			continue
 		}
 		if _, ok = raw.(string); !ok {
-			return newdbplugin.InitializeResponse{}, fmt.Errorf(`%q must be a string`, optionalField)
+			return dbplugin.InitializeResponse{}, fmt.Errorf(`%q must be a string`, optionalField)
 		}
 	}
 
 	// Check the one optional bool field is in the expected format.
 	if raw, ok := req.Config["insecure"]; ok {
 		if _, ok = raw.(bool); !ok {
-			return newdbplugin.InitializeResponse{}, errors.New(`"insecure" must be a bool`)
+			return dbplugin.InitializeResponse{}, errors.New(`"insecure" must be a bool`)
 		}
 	}
 
 	// Test the given config to see if we can make a client.
 	client, err := buildClient(req.Config)
 	if err != nil {
-		return newdbplugin.InitializeResponse{}, errwrap.Wrapf("couldn't make client with inbound config: {{err}}", err)
+		return dbplugin.InitializeResponse{}, errwrap.Wrapf("couldn't make client with inbound config: {{err}}", err)
 	}
 
 	// Optionally, test the given config to see if we can make a successful call.
@@ -119,7 +119,7 @@ func (es *Elasticsearch) Initialize(ctx context.Context, req newdbplugin.Initial
 		// be no err from the call. However, if something is misconfigured, this will yield
 		// an error response, which will be described in the returned error.
 		if _, err := client.GetRole(ctx, "vault-test"); err != nil {
-			return newdbplugin.InitializeResponse{}, errwrap.Wrapf("client test of getting a role failed: {{err}}", err)
+			return dbplugin.InitializeResponse{}, errwrap.Wrapf("client test of getting a role failed: {{err}}", err)
 		}
 	}
 
@@ -127,7 +127,7 @@ func (es *Elasticsearch) Initialize(ctx context.Context, req newdbplugin.Initial
 	es.mux.Lock()
 	defer es.mux.Unlock()
 	es.config = req.Config
-	resp := newdbplugin.InitializeResponse{
+	resp := dbplugin.InitializeResponse{
 		Config: req.Config,
 	}
 	return resp, nil
@@ -136,7 +136,7 @@ func (es *Elasticsearch) Initialize(ctx context.Context, req newdbplugin.Initial
 // NewUser is called on `$ vault read database/creds/:role-name`
 // and it's the first time anything is touched from `$ vault write database/roles/:role-name`.
 // This is likely to be the highest-throughput method for this plugin.
-func (es *Elasticsearch) NewUser(ctx context.Context, req newdbplugin.NewUserRequest) (newdbplugin.NewUserResponse, error) {
+func (es *Elasticsearch) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (dbplugin.NewUserResponse, error) {
 	username, err := credsutil.GenerateUsername(
 		credsutil.DisplayName(req.UsernameConfig.DisplayName, 15),
 		credsutil.RoleName(req.UsernameConfig.RoleName, 15),
@@ -144,12 +144,12 @@ func (es *Elasticsearch) NewUser(ctx context.Context, req newdbplugin.NewUserReq
 		credsutil.Separator("-"),
 	)
 	if err != nil {
-		return newdbplugin.NewUserResponse{}, fmt.Errorf("unable to generate username for %q: %w", req.UsernameConfig, err)
+		return dbplugin.NewUserResponse{}, fmt.Errorf("unable to generate username for %q: %w", req.UsernameConfig, err)
 	}
 
 	stmt, err := newCreationStatement(req.Statements)
 	if err != nil {
-		return newdbplugin.NewUserResponse{}, errwrap.Wrapf("unable to read creation_statements: {{err}}", err)
+		return dbplugin.NewUserResponse{}, errwrap.Wrapf("unable to read creation_statements: {{err}}", err)
 	}
 
 	user := &User{
@@ -163,7 +163,7 @@ func (es *Elasticsearch) NewUser(ctx context.Context, req newdbplugin.NewUserReq
 
 	client, err := buildClient(es.config)
 	if err != nil {
-		return newdbplugin.NewUserResponse{}, errwrap.Wrapf("unable to get client: {{err}}", err)
+		return dbplugin.NewUserResponse{}, errwrap.Wrapf("unable to get client: {{err}}", err)
 	}
 
 	// If the RoleToCreate map has been populated with any data, we have one role to create.
@@ -172,28 +172,28 @@ func (es *Elasticsearch) NewUser(ctx context.Context, req newdbplugin.NewUserReq
 	if len(stmt.RoleToCreate) > 0 {
 		// We'll simply name the role the same thing as the username, making it easy to tie back to this user.
 		if err := client.CreateRole(ctx, username, stmt.RoleToCreate); err != nil {
-			return newdbplugin.NewUserResponse{}, errwrap.Wrapf(fmt.Sprintf("unable to create role name %s, role definition %q: {{err}}", username, stmt.RoleToCreate), err)
+			return dbplugin.NewUserResponse{}, errwrap.Wrapf(fmt.Sprintf("unable to create role name %s, role definition %q: {{err}}", username, stmt.RoleToCreate), err)
 		}
 		user.Roles = []string{username}
 	}
 	if err := client.CreateUser(ctx, username, user); err != nil {
-		return newdbplugin.NewUserResponse{}, errwrap.Wrapf(fmt.Sprintf("unable to create user name %s, user %q: {{err}}", username, user), err)
+		return dbplugin.NewUserResponse{}, errwrap.Wrapf(fmt.Sprintf("unable to create user name %s, user %q: {{err}}", username, user), err)
 	}
-	resp := newdbplugin.NewUserResponse{
+	resp := dbplugin.NewUserResponse{
 		Username: username,
 	}
 	return resp, nil
 }
 
 // DeleteUser is used to delete users from elasticsearch
-func (es *Elasticsearch) DeleteUser(ctx context.Context, req newdbplugin.DeleteUserRequest) (newdbplugin.DeleteUserResponse, error) {
+func (es *Elasticsearch) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest) (dbplugin.DeleteUserResponse, error) {
 	// Don't let anyone write the config while we're using it for our current client.
 	es.mux.RLock()
 	defer es.mux.RUnlock()
 
 	client, err := buildClient(es.config)
 	if err != nil {
-		return newdbplugin.DeleteUserResponse{}, errwrap.Wrapf("unable to get client: {{err}}", err)
+		return dbplugin.DeleteUserResponse{}, errwrap.Wrapf("unable to get client: {{err}}", err)
 	}
 
 	var errs *multierror.Error
@@ -209,12 +209,12 @@ func (es *Elasticsearch) DeleteUser(ctx context.Context, req newdbplugin.DeleteU
 	if err := client.DeleteUser(ctx, req.Username); err != nil {
 		errs = multierror.Append(errs, fmt.Errorf("unable to delete user name %s: %w", req.Username, err))
 	}
-	return newdbplugin.DeleteUserResponse{}, errs.ErrorOrNil()
+	return dbplugin.DeleteUserResponse{}, errs.ErrorOrNil()
 }
 
 // UpdateUser doesn't require any statements from the user because it's not configurable in any
 // way. We simply generate a new password and hit a pre-defined Elasticsearch REST API to rotate them.
-func (es *Elasticsearch) UpdateUser(ctx context.Context, req newdbplugin.UpdateUserRequest) (newdbplugin.UpdateUserResponse, error) {
+func (es *Elasticsearch) UpdateUser(ctx context.Context, req dbplugin.UpdateUserRequest) (dbplugin.UpdateUserResponse, error) {
 
 	// Don't let anyone read or write the config while we're in the process of rotating the password.
 	es.mux.Lock()
@@ -222,18 +222,18 @@ func (es *Elasticsearch) UpdateUser(ctx context.Context, req newdbplugin.UpdateU
 
 	client, err := buildClient(es.config)
 	if err != nil {
-		return newdbplugin.UpdateUserResponse{}, fmt.Errorf("unable to get client: %w", err)
+		return dbplugin.UpdateUserResponse{}, fmt.Errorf("unable to get client: %w", err)
 	}
 
 	if req.Password != nil {
 		if err := client.ChangePassword(ctx, req.Username, req.Password.NewPassword); err != nil {
-			return newdbplugin.UpdateUserResponse{}, fmt.Errorf("unable to change password: %w", err)
+			return dbplugin.UpdateUserResponse{}, fmt.Errorf("unable to change password: %w", err)
 		}
 		// Note: changing the expiration of a user is a no-op for Elasticsearch,
 		// and therefore ignored here
 	}
 
-	return newdbplugin.UpdateUserResponse{}, nil
+	return dbplugin.UpdateUserResponse{}, nil
 }
 
 // Close for Elasticsearch is a NOOP, nothing to close
@@ -241,7 +241,7 @@ func (es *Elasticsearch) Close() error {
 	return nil
 }
 
-func newCreationStatement(statements newdbplugin.Statements) (*creationStatement, error) {
+func newCreationStatement(statements dbplugin.Statements) (*creationStatement, error) {
 	if len(statements.Commands) == 0 {
 		return nil, dbutil.ErrEmptyCreationStatement
 	}

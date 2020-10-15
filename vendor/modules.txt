@@ -74,14 +74,15 @@ github.com/hashicorp/hcl/json/token
 # github.com/hashicorp/vault/api v1.0.5-0.20200519221902-385fac77e20f
 ## explicit
 github.com/hashicorp/vault/api
-# github.com/hashicorp/vault/sdk v0.1.14-0.20200930230837-9978ba802fcd
+# github.com/hashicorp/vault/sdk v0.1.14-0.20201015192012-a69ee0f65a28
 ## explicit
 github.com/hashicorp/vault/sdk/database/dbplugin
+github.com/hashicorp/vault/sdk/database/dbplugin/v5
+github.com/hashicorp/vault/sdk/database/dbplugin/v5/proto
+github.com/hashicorp/vault/sdk/database/dbplugin/v5/testing
 github.com/hashicorp/vault/sdk/database/helper/credsutil
 github.com/hashicorp/vault/sdk/database/helper/dbutil
 github.com/hashicorp/vault/sdk/database/newdbplugin
-github.com/hashicorp/vault/sdk/database/newdbplugin/proto
-github.com/hashicorp/vault/sdk/database/newdbplugin/testing
 github.com/hashicorp/vault/sdk/helper/base62
 github.com/hashicorp/vault/sdk/helper/certutil
 github.com/hashicorp/vault/sdk/helper/compressutil

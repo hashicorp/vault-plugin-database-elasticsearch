@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-cleanhttp"
-	"github.com/hashicorp/vault/sdk/database/newdbplugin"
-	dbtesting "github.com/hashicorp/vault/sdk/database/newdbplugin/testing"
+	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
+	dbtesting "github.com/hashicorp/vault/sdk/database/dbplugin/v5/testing"
 	"github.com/hashicorp/vault/sdk/helper/tlsutil"
 	"github.com/ory/dockertest"
 )
@@ -45,7 +45,7 @@ func TestIntegration_Container(t *testing.T) {
 		ClientCert:    filepath.Join("testdata", "certs", "client.pem"),
 		ClientKey:     filepath.Join("testdata", "certs", "client-key.pem"),
 		Elasticsearch: &Elasticsearch{},
-		TestUsers:     make(map[string]newdbplugin.Statements),
+		TestUsers:     make(map[string]dbplugin.Statements),
 		TestCreds:     make(map[string]string),
 		tc:            tc,
 	}
@@ -59,14 +59,14 @@ type IntegrationTestEnv struct {
 	Username, Password, URL       string
 	CaCert, ClientCert, ClientKey string
 	Elasticsearch                 *Elasticsearch
-	TestUsers                     map[string]newdbplugin.Statements
+	TestUsers                     map[string]dbplugin.Statements
 	TestCreds                     map[string]string
 
 	tc *ElasticSearchEnv
 }
 
 func (e *IntegrationTestEnv) TestElasticsearch_Initialize(t *testing.T) {
-	req := newdbplugin.InitializeRequest{
+	req := dbplugin.InitializeRequest{
 		Config: map[string]interface{}{
 			"username":    e.Username,
 			"password":    e.Password,
@@ -86,12 +86,12 @@ func (e *IntegrationTestEnv) TestElasticsearch_Initialize(t *testing.T) {
 }
 
 func (e *IntegrationTestEnv) TestElasticsearch_NewUser(t *testing.T) {
-	statements1 := newdbplugin.Statements{
+	statements1 := dbplugin.Statements{
 		Commands: []string{`{"elasticsearch_role_definition": {"indices": [{"names":["*"], "privileges":["read"]}]}}`},
 	}
 	password1 := "initial password"
-	req1 := newdbplugin.NewUserRequest{
-		UsernameConfig: newdbplugin.UsernameMetadata{
+	req1 := dbplugin.NewUserRequest{
+		UsernameConfig: dbplugin.UsernameMetadata{
 			DisplayName: "display-name",
 			RoleName:    "role-name",
 		},
@@ -109,12 +109,12 @@ func (e *IntegrationTestEnv) TestElasticsearch_NewUser(t *testing.T) {
 		t.Errorf("want successful authentication, got failed authentication for user:%s with password:%s", resp1.Username, password1)
 	}
 
-	statements2 := newdbplugin.Statements{
+	statements2 := dbplugin.Statements{
 		Commands: []string{`{"elasticsearch_roles": ["vault"]}`},
 	}
 	password2 := "second password"
-	req2 := newdbplugin.NewUserRequest{
-		UsernameConfig: newdbplugin.UsernameMetadata{
+	req2 := dbplugin.NewUserRequest{
+		UsernameConfig: dbplugin.UsernameMetadata{
 			DisplayName: "display-name",
 			RoleName:    "role-name",
 		},
@@ -135,7 +135,7 @@ func (e *IntegrationTestEnv) TestElasticsearch_NewUser(t *testing.T) {
 
 func (e *IntegrationTestEnv) TestElasticsearch_DeleteUser(t *testing.T) {
 	for username, statements := range e.TestUsers {
-		req := newdbplugin.DeleteUserRequest{
+		req := dbplugin.DeleteUserRequest{
 			Username:   username,
 			Statements: statements,
 		}
@@ -148,9 +148,9 @@ func (e *IntegrationTestEnv) TestElasticsearch_DeleteUser(t *testing.T) {
 }
 
 func (e *IntegrationTestEnv) TestElasticsearch_UpdateUser(t *testing.T) {
-	req := newdbplugin.UpdateUserRequest{
+	req := dbplugin.UpdateUserRequest{
 		Username: e.Username,
-		Password: &newdbplugin.ChangePassword{
+		Password: &dbplugin.ChangePassword{
 			NewPassword: "new password",
 		},
 	}
