@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
 )
 
-var _ dbplugin.Database = &Elasticsearch{}
+var _ dbplugin.Database = (*Elasticsearch)(nil)
 
 // New returns a new Elasticsearch instance
 func New() (interface{}, error) {
