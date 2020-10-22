@@ -5,16 +5,22 @@ import (
 	"os"
 
 	elasticsearch "github.com/hashicorp/vault-plugin-database-elasticsearch"
-	"github.com/hashicorp/vault/api"
+	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
 )
 
 func main() {
-	apiClientMeta := &api.PluginAPIClientMeta{}
-	flags := apiClientMeta.FlagSet()
-	flags.Parse(os.Args[1:])
-
-	if err := elasticsearch.Run(apiClientMeta.GetTLSConfig()); err != nil {
+	if err := Run(); err != nil {
 		log.Println(err)
 		os.Exit(1)
 	}
+}
+
+// Run starts serving the plugin
+func Run() error {
+	db, err := elasticsearch.New()
+	if err != nil {
+		return err
+	}
+	dbplugin.Serve(db.(dbplugin.Database))
+	return nil
 }
