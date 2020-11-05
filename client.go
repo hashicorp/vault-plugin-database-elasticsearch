@@ -14,9 +14,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"path"
 
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/hashicorp/go-rootcerts"
+	version "github.com/hashicorp/go-version"
 )
 
 type ClientConfig struct {
@@ -89,12 +91,16 @@ func NewClient(config *ClientConfig) (*Client, error) {
 type Client struct {
 	username, password, baseURL string
 	client                      *retryablehttp.Client
+	securityPath                string
 }
 
 // Role management
 
 func (c *Client) CreateRole(ctx context.Context, name string, role map[string]interface{}) error {
-	endpoint := "/_xpack/security/role/" + name
+	if err := c.setSecurityPath(ctx); err != nil {
+		return err
+	}
+	endpoint := path.Join(c.securityPath, "/role/", name)
 	method := http.MethodPost
 
 	roleBytes, err := json.Marshal(role)
@@ -110,7 +116,10 @@ func (c *Client) CreateRole(ctx context.Context, name string, role map[string]in
 
 // GetRole returns nil, nil if role is unfound.
 func (c *Client) GetRole(ctx context.Context, name string) (map[string]interface{}, error) {
-	endpoint := "/_xpack/security/role/" + name
+	if err := c.setSecurityPath(ctx); err != nil {
+		return nil, err
+	}
+	endpoint := path.Join(c.securityPath, "/role/", name)
 	method := http.MethodGet
 
 	req, err := http.NewRequest(method, c.baseURL+endpoint, nil)
@@ -125,7 +134,10 @@ func (c *Client) GetRole(ctx context.Context, name string) (map[string]interface
 }
 
 func (c *Client) DeleteRole(ctx context.Context, name string) error {
-	endpoint := "/_xpack/security/role/" + name
+	if err := c.setSecurityPath(ctx); err != nil {
+		return err
+	}
+	endpoint := c.securityPath + "/role/" + name
 	method := http.MethodDelete
 
 	req, err := http.NewRequest(method, c.baseURL+endpoint, nil)
@@ -143,7 +155,10 @@ type User struct {
 }
 
 func (c *Client) CreateUser(ctx context.Context, name string, user *User) error {
-	endpoint := "/_xpack/security/user/" + name
+	if err := c.setSecurityPath(ctx); err != nil {
+		return err
+	}
+	endpoint := c.securityPath + "/user/" + name
 	method := http.MethodPost
 
 	userJson, err := json.Marshal(user)
@@ -158,7 +173,10 @@ func (c *Client) CreateUser(ctx context.Context, name string, user *User) error 
 }
 
 func (c *Client) ChangePassword(ctx context.Context, name, newPassword string) error {
-	endpoint := "/_xpack/security/user/" + name + "/_password"
+	if err := c.setSecurityPath(ctx); err != nil {
+		return err
+	}
+	endpoint := path.Join(c.securityPath, "/user/", name, "/_password")
 	method := http.MethodPost
 
 	pwdChangeBodyJson, err := json.Marshal(map[string]string{"password": newPassword})
@@ -173,7 +191,10 @@ func (c *Client) ChangePassword(ctx context.Context, name, newPassword string) e
 }
 
 func (c *Client) DeleteUser(ctx context.Context, name string) error {
-	endpoint := "/_xpack/security/user/" + name
+	if err := c.setSecurityPath(ctx); err != nil {
+		return err
+	}
+	endpoint := path.Join(c.securityPath, "/user/", name)
 	method := http.MethodDelete
 
 	req, err := http.NewRequest(method, c.baseURL+endpoint, nil)
@@ -181,6 +202,65 @@ func (c *Client) DeleteUser(ctx context.Context, name string) error {
 		return err
 	}
 	return c.do(ctx, req, nil)
+}
+
+// esInfo is used to pick the elasticsearch version out of the baseURL response, example:
+//
+// GET /
+// Response:
+// {
+// 	"name" : "es01",
+// 	"cluster_name" : "es-cluster",
+// 	"cluster_uuid" : "N1ECkSz9Qy6KY_noyom9yg",
+// 	"version" : {
+// 	  "number" : "6.8.13",
+// ...
+type esInfo struct {
+	Version struct {
+		Number string `json:"number"`
+	} `json:"version"`
+}
+
+func (c *Client) getInfo(ctx context.Context) (*esInfo, error) {
+	req, err := http.NewRequest(http.MethodGet, c.baseURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	ret := &esInfo{}
+	if err = c.do(ctx, req, ret); err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
+
+func (c *Client) setSecurityPath(ctx context.Context) error {
+	if len(c.securityPath) > 0 {
+		return nil
+	}
+
+	info, err := c.getInfo(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to getInfo: %w", err)
+	}
+	securityPath, err := getXPackStr(info.Version.Number)
+	if err != nil {
+		return err
+	}
+	c.securityPath = securityPath
+	return nil
+}
+
+func getXPackStr(versionIn string) (string, error) {
+	v, err := version.NewVersion(versionIn)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse version: %w", err)
+	}
+	if v.Segments()[0] < 7 {
+		return "/_xpack/security", nil
+	} else {
+		return "/_security", nil
+	}
 }
 
 // Low-level request handling

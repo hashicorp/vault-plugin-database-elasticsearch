@@ -57,7 +57,7 @@ Also create a 'vault' role for Test_ExternallyDefinedRole, ex:
 $ curl \
     -k -X POST \
     -H "Content-Type: application/json" \
-    -d '{"cluster": ["manage_security"]}' \
+    -d '{"cluster": ["manage_security", "monitor"]}' \
     https://elastic:$ES_PASSWORD@localhost:9200/_xpack/security/role/vault
 
 */
@@ -178,7 +178,7 @@ func (e *Environment) Test_InternallyDefinedRole(t *testing.T) {
 	// Write the role.
 	writeResp, err := e.doVaultReq(http.MethodPost, "/v1/database/roles/internally-defined-role", map[string]interface{}{
 		"db_name":             "my-elasticsearch-database",
-		"creation_statements": `{"elasticsearch_role_definition": {"cluster": ["manage_security"]}}`,
+		"creation_statements": `{"elasticsearch_role_definition": {"cluster": ["manage_security", "monitor"]}}`,
 		"default_ttl":         "1h",
 		"max_ttl":             "24h",
 	})
@@ -208,7 +208,7 @@ func (e *Environment) Test_InternallyDefinedRole(t *testing.T) {
 		t.Fatal("expected creation_statements but they weren't returned")
 	} else if len(stmts.([]interface{})) != 1 {
 		t.Fatalf("expected 1 creation_statements but received %s", stmts)
-	} else if fmt.Sprintf("%s", stmts.([]interface{})[0]) != `{"elasticsearch_role_definition": {"cluster": ["manage_security"]}}` {
+	} else if fmt.Sprintf("%s", stmts.([]interface{})[0]) != `{"elasticsearch_role_definition": {"cluster": ["manage_security", "monitor"]}}` {
 		t.Fatalf("received unexpected statement: %s", stmts.([]interface{})[0])
 	}
 	if respData["default_ttl"].(float64) != 3600 {

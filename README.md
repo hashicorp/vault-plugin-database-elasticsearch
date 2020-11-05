@@ -47,7 +47,7 @@ POST to Elasticsearch. To do this, we used the `elastic` superuser whose passwor
 $ curl \
     -X POST \
     -H "Content-Type: application/json" \
-    -d '{"cluster": ["manage_security"]}' \
+    -d '{"cluster": ["manage_security", "monitor"]}' \
     http://elastic:$PASSWORD@localhost:9200/_xpack/security/role/vault
 ```
 

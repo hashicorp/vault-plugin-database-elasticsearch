@@ -27,4 +27,10 @@ const (
 	deleteUserResponseTpl = `{
 	  "found" : %s
 	}`
+
+	infoResponseTpl = `{
+		"version" : {
+		  "number" : "%s"
+		}
+	}`
 )
