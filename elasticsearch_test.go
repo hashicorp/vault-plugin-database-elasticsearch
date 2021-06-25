@@ -5,10 +5,12 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/vault-plugin-database-elasticsearch/mock"
 	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
 	dbtesting "github.com/hashicorp/vault/sdk/database/dbplugin/v5/testing"
+	"github.com/stretchr/testify/require"
 )
 
 func TestElasticsearch(t *testing.T) {
@@ -135,4 +137,75 @@ func TestElasticsearch_SecretValues(t *testing.T) {
 	if val["dont-show-me-either!"] != "[client_key]" {
 		t.Fatalf("expected %q but received %q", "[client_key]", val["dont-show-me-either!"])
 	}
+}
+
+func TestElasticsearch_DefaultUsernameTemplate(t *testing.T) {
+	esAPI := mock.Elasticsearch()
+	ts := httptest.NewServer(http.HandlerFunc(esAPI.HandleRequests))
+	defer ts.Close()
+
+	db := &Elasticsearch{}
+	req := dbplugin.InitializeRequest{
+		Config: map[string]interface{}{
+			"username": esAPI.Username(),
+			"password": esAPI.Password(),
+			"url":      ts.URL,
+		},
+		VerifyConnection: true,
+	}
+	dbtesting.AssertInitialize(t, db, req)
+
+	password := "0ZsueAP-dqCNGZo35M0n"
+	newUserReq := dbplugin.NewUserRequest{
+		UsernameConfig: dbplugin.UsernameMetadata{
+			DisplayName: "display-name",
+			RoleName:    "role-name",
+		},
+		Statements: dbplugin.Statements{
+			Commands: []string{`{"elasticsearch_role_definition": {"indices": [{"names":["*"], "privileges":["read"]}]}}`},
+		},
+		Password:   password,
+		Expiration: time.Now().Add(1 * time.Minute),
+	}
+	resp := dbtesting.AssertNewUser(t, db, newUserReq)
+
+	require.Regexp(t, `^v-display-name-role-name-[a-zA-Z0-9]{20}-[0-9]{10}$`, resp.Username)
+}
+
+func TestElasticsearch_CustomUsernameTemplate(t *testing.T) {
+	esAPI := mock.Elasticsearch()
+	ts := httptest.NewServer(http.HandlerFunc(esAPI.HandleRequests))
+	defer ts.Close()
+
+	db := &Elasticsearch{}
+	req := dbplugin.InitializeRequest{
+		Config: map[string]interface{}{
+			"username": esAPI.Username(),
+			"password": esAPI.Password(),
+			"url":      ts.URL,
+			"username_template": "{{.DisplayName}}-{{random 10}}",
+		},
+		VerifyConnection: true,
+	}
+	dbtesting.AssertInitialize(t, db, req)
+
+	password := "0ZsueAP-dqCNGZo35M0n"
+	newUserReq := dbplugin.NewUserRequest{
+		UsernameConfig: dbplugin.UsernameMetadata{
+			DisplayName: "display-name",
+			RoleName:    "role-name",
+		},
+		Statements: dbplugin.Statements{
+			Commands: []string{`{"elasticsearch_role_definition": {"indices": [{"names":["*"], "privileges":["read"]}]}}`},
+		},
+		Password:   password,
+		Expiration: time.Now().Add(1 * time.Minute),
+	}
+	resp := dbtesting.AssertNewUser(t, db, newUserReq)
+
+	if resp.Username == "" {
+		t.Fatalf("Missing username")
+	}
+
+	require.Regexp(t, `^display-name-[a-zA-Z0-9]{10}$`, resp.Username)
 }
