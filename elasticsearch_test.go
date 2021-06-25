@@ -180,9 +180,9 @@ func TestElasticsearch_CustomUsernameTemplate(t *testing.T) {
 	db := &Elasticsearch{}
 	req := dbplugin.InitializeRequest{
 		Config: map[string]interface{}{
-			"username": esAPI.Username(),
-			"password": esAPI.Password(),
-			"url":      ts.URL,
+			"username":          esAPI.Username(),
+			"password":          esAPI.Password(),
+			"url":               ts.URL,
 			"username_template": "{{.DisplayName}}-{{random 10}}",
 		},
 		VerifyConnection: true,
