@@ -9,9 +9,9 @@ import (
 
 	"github.com/hashicorp/errwrap"
 	multierror "github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
 	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/vault/sdk/helper/template"
 )
 
@@ -224,7 +224,6 @@ func (es *Elasticsearch) DeleteUser(ctx context.Context, req dbplugin.DeleteUser
 // UpdateUser doesn't require any statements from the user because it's not configurable in any
 // way. We simply generate a new password and hit a pre-defined Elasticsearch REST API to rotate them.
 func (es *Elasticsearch) UpdateUser(ctx context.Context, req dbplugin.UpdateUserRequest) (dbplugin.UpdateUserResponse, error) {
-
 	// Don't let anyone read or write the config while we're in the process of rotating the password.
 	es.mux.Lock()
 	defer es.mux.Unlock()
@@ -275,7 +274,6 @@ type creationStatement struct {
 // buildClient is a helper method for building a client from the present config,
 // which is done often.
 func buildClient(config map[string]interface{}) (*Client, error) {
-
 	// We can presume these required fields are provided by strings
 	// because they're validated in Init.
 	clientConfig := &ClientConfig{

@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-cleanhttp"
+	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
 	dbtesting "github.com/hashicorp/vault/sdk/database/dbplugin/v5/testing"
-	"github.com/hashicorp/vault/sdk/helper/tlsutil"
 	"github.com/ory/dockertest"
 )
 
@@ -189,7 +189,7 @@ func prepareTestContainer(t *testing.T) (cleanup func(), client *http.Client, re
 		t.Fatalf("Failed to connect to docker: %s", err)
 	}
 
-	var env = []string{
+	env := []string{
 		"discovery.type=single-node",
 		"xpack.security.enabled=true",
 		"xpack.license.self_generated.type=trial",
