@@ -4,7 +4,7 @@ jobs:
     machine: true
     working_directory: ~/src/github.com/hashicorp/vault-plugin-database-elasticsearch
     environment:
-      GO_VERSION: 1.14.9
+      GO_VERSION: 1.17.2
     steps:
       - checkout
       - run:
