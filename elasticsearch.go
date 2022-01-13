@@ -120,8 +120,10 @@ func (es *Elasticsearch) Initialize(ctx context.Context, req dbplugin.Initialize
 		}
 	}
 
-	// Test the given config to see if we can make a client.
-	client, err := buildClient(req.Config)
+	// Test the given config to see if we can make a client. If
+	// req.VerifyConnection is true, setSecurityPath() will be called which will
+	// determine the correct API path based on the elasticsearch version.
+	client, err := buildClient(ctx, req.Config, req.VerifyConnection)
 	if err != nil {
 		return dbplugin.InitializeResponse{}, errwrap.Wrapf("couldn't make client with inbound config: {{err}}", err)
 	}
@@ -170,7 +172,7 @@ func (es *Elasticsearch) NewUser(ctx context.Context, req dbplugin.NewUserReques
 	es.mux.RLock()
 	defer es.mux.RUnlock()
 
-	client, err := buildClient(es.config)
+	client, err := buildClient(ctx, es.config, true)
 	if err != nil {
 		return dbplugin.NewUserResponse{}, errwrap.Wrapf("unable to get client: {{err}}", err)
 	}
@@ -200,7 +202,7 @@ func (es *Elasticsearch) DeleteUser(ctx context.Context, req dbplugin.DeleteUser
 	es.mux.RLock()
 	defer es.mux.RUnlock()
 
-	client, err := buildClient(es.config)
+	client, err := buildClient(ctx, es.config, true)
 	if err != nil {
 		return dbplugin.DeleteUserResponse{}, errwrap.Wrapf("unable to get client: {{err}}", err)
 	}
@@ -228,7 +230,7 @@ func (es *Elasticsearch) UpdateUser(ctx context.Context, req dbplugin.UpdateUser
 	es.mux.Lock()
 	defer es.mux.Unlock()
 
-	client, err := buildClient(es.config)
+	client, err := buildClient(ctx, es.config, true)
 	if err != nil {
 		return dbplugin.UpdateUserResponse{}, fmt.Errorf("unable to get client: %w", err)
 	}
@@ -273,7 +275,7 @@ type creationStatement struct {
 
 // buildClient is a helper method for building a client from the present config,
 // which is done often.
-func buildClient(config map[string]interface{}) (*Client, error) {
+func buildClient(ctx context.Context, config map[string]interface{}, verifyConnection bool) (*Client, error) {
 	// We can presume these required fields are provided by strings
 	// because they're validated in Init.
 	clientConfig := &ClientConfig{
@@ -318,7 +320,7 @@ func buildClient(config map[string]interface{}) (*Client, error) {
 		clientConfig.TLSConfig = tlsConf
 	}
 
-	client, err := NewClient(clientConfig)
+	client, err := NewClient(ctx, clientConfig, verifyConnection)
 	if err != nil {
 		return nil, err
 	}

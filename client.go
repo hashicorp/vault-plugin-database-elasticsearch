@@ -53,7 +53,10 @@ type TLSConfig struct {
 	Insecure bool
 }
 
-func NewClient(config *ClientConfig) (*Client, error) {
+// NewClient constructs a Client from the given config. ctx is used to set the
+// x-pack security API path (which depends on the version of Elasticsearch) if
+// verifyConnection is true.
+func NewClient(ctx context.Context, config *ClientConfig, verifyConnection bool) (*Client, error) {
 	client := retryablehttp.NewClient()
 	if config.TLSConfig != nil {
 		conf := &tls.Config{
@@ -80,12 +83,16 @@ func NewClient(config *ClientConfig) (*Client, error) {
 
 		client.HTTPClient.Transport = &http.Transport{TLSClientConfig: conf}
 	}
-	return &Client{
+	c := &Client{
 		username: config.Username,
 		password: config.Password,
 		baseURL:  config.BaseURL,
 		client:   client,
-	}, nil
+	}
+	if verifyConnection {
+		return c, c.setSecurityPath(ctx)
+	}
+	return c, nil
 }
 
 type Client struct {
@@ -97,9 +104,6 @@ type Client struct {
 // Role management
 
 func (c *Client) CreateRole(ctx context.Context, name string, role map[string]interface{}) error {
-	if err := c.setSecurityPath(ctx); err != nil {
-		return err
-	}
 	endpoint := path.Join(c.securityPath, "/role/", name)
 	method := http.MethodPost
 
@@ -116,9 +120,6 @@ func (c *Client) CreateRole(ctx context.Context, name string, role map[string]in
 
 // GetRole returns nil, nil if role is unfound.
 func (c *Client) GetRole(ctx context.Context, name string) (map[string]interface{}, error) {
-	if err := c.setSecurityPath(ctx); err != nil {
-		return nil, err
-	}
 	endpoint := path.Join(c.securityPath, "/role/", name)
 	method := http.MethodGet
 
@@ -134,9 +135,6 @@ func (c *Client) GetRole(ctx context.Context, name string) (map[string]interface
 }
 
 func (c *Client) DeleteRole(ctx context.Context, name string) error {
-	if err := c.setSecurityPath(ctx); err != nil {
-		return err
-	}
 	endpoint := c.securityPath + "/role/" + name
 	method := http.MethodDelete
 
@@ -155,9 +153,6 @@ type User struct {
 }
 
 func (c *Client) CreateUser(ctx context.Context, name string, user *User) error {
-	if err := c.setSecurityPath(ctx); err != nil {
-		return err
-	}
 	endpoint := c.securityPath + "/user/" + name
 	method := http.MethodPost
 
@@ -173,9 +168,6 @@ func (c *Client) CreateUser(ctx context.Context, name string, user *User) error 
 }
 
 func (c *Client) ChangePassword(ctx context.Context, name, newPassword string) error {
-	if err := c.setSecurityPath(ctx); err != nil {
-		return err
-	}
 	endpoint := path.Join(c.securityPath, "/user/", name, "/_password")
 	method := http.MethodPost
 
@@ -191,9 +183,6 @@ func (c *Client) ChangePassword(ctx context.Context, name, newPassword string) e
 }
 
 func (c *Client) DeleteUser(ctx context.Context, name string) error {
-	if err := c.setSecurityPath(ctx); err != nil {
-		return err
-	}
 	endpoint := path.Join(c.securityPath, "/user/", name)
 	method := http.MethodDelete
 
@@ -221,6 +210,19 @@ type esInfo struct {
 	} `json:"version"`
 }
 
+func (c *Client) setSecurityPath(ctx context.Context) error {
+	info, err := c.getInfo(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to getInfo: %w", err)
+	}
+	securityPath, err := getXPackStr(info.Version.Number)
+	if err != nil {
+		return err
+	}
+	c.securityPath = securityPath
+	return nil
+}
+
 func (c *Client) getInfo(ctx context.Context) (*esInfo, error) {
 	req, err := http.NewRequest(http.MethodGet, c.baseURL, nil)
 	if err != nil {
@@ -232,23 +234,6 @@ func (c *Client) getInfo(ctx context.Context) (*esInfo, error) {
 	}
 
 	return ret, nil
-}
-
-func (c *Client) setSecurityPath(ctx context.Context) error {
-	if len(c.securityPath) > 0 {
-		return nil
-	}
-
-	info, err := c.getInfo(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to getInfo: %w", err)
-	}
-	securityPath, err := getXPackStr(info.Version.Number)
-	if err != nil {
-		return err
-	}
-	c.securityPath = securityPath
-	return nil
 }
 
 func getXPackStr(versionIn string) (string, error) {

@@ -259,7 +259,7 @@ func (e *Environment) Test_InternallyDefinedRole(t *testing.T) {
 	configCopy := copyMap(e.Config)
 	configCopy["username"] = username
 	configCopy["password"] = password
-	userClient, err := buildClient(configCopy)
+	userClient, err := buildClient(context.Background(), configCopy, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -267,7 +267,7 @@ func (e *Environment) Test_InternallyDefinedRole(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Delete the role using the root creds
-	client, err := buildClient(e.Config)
+	client, err := buildClient(context.Background(), e.Config, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -359,7 +359,7 @@ func (e *Environment) Test_ExternallyDefinedRole(t *testing.T) {
 	configCopy := copyMap(e.Config)
 	configCopy["username"] = username
 	configCopy["password"] = password
-	client, err := buildClient(configCopy)
+	client, err := buildClient(context.Background(), configCopy, true)
 	if err != nil {
 		t.Fatal(err)
 	}

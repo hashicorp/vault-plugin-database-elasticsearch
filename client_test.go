@@ -17,11 +17,12 @@ func TestClient_CreateListGetDeleteRole(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(esAPI.HandleRequests))
 	defer ts.Close()
 
-	client, err := NewClient(&ClientConfig{
+	config := &ClientConfig{
 		Username: esAPI.Username(),
 		Password: esAPI.Password(),
 		BaseURL:  ts.URL,
-	})
+	}
+	client, err := NewClient(context.Background(), config, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,11 +53,12 @@ func TestClient_CreateGetDeleteUser(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(esAPI.HandleRequests))
 	defer ts.Close()
 
-	client, err := NewClient(&ClientConfig{
+	config := &ClientConfig{
 		Username: esAPI.Username(),
 		Password: esAPI.Password(),
 		BaseURL:  ts.URL,
-	})
+	}
+	client, err := NewClient(context.Background(), config, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,11 +83,12 @@ func TestClient_BadResponses(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(giveBadResponses))
 	defer ts.Close()
 
-	client, err := NewClient(&ClientConfig{
+	config := &ClientConfig{
 		Username: "fizz",
 		Password: "buzz",
 		BaseURL:  ts.URL,
-	})
+	}
+	client, err := NewClient(context.Background(), config, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,11 +182,12 @@ func Test_setSecurityPath(t *testing.T) {
 			ts := httptest.NewServer(http.HandlerFunc(test.esInfoHandler))
 			defer ts.Close()
 
-			client, err := NewClient(&ClientConfig{
+			config := &ClientConfig{
 				Username: "fizz",
 				Password: "buzz",
 				BaseURL:  ts.URL,
-			})
+			}
+			client, err := NewClient(context.Background(), config, false)
 			if err != nil {
 				t.Fatal(err)
 			}
