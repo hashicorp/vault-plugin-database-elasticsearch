@@ -58,11 +58,10 @@ $ curl \
     -k -X POST \
     -H "Content-Type: application/json" \
     -d '{"cluster": ["manage_security", "monitor"]}' \
-    https://elastic:$ES_PASSWORD@localhost:9200/_xpack/security/role/vault
+    https://elastic:$ES_PASSWORD@localhost:9200/_security/role/vault
 
 */
 func Test_Acceptance(t *testing.T) {
-
 	if os.Getenv("VAULT_ACC") != "1" {
 		t.SkipNow()
 	}

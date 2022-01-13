@@ -21,6 +21,9 @@ import (
 	version "github.com/hashicorp/go-version"
 )
 
+// defaultSecurityAPIPath is the security API path for Elasticsearch 7+
+const defaultSecurityAPIPath = "/_security"
+
 type ClientConfig struct {
 	Username, Password, BaseURL string
 
@@ -84,10 +87,11 @@ func NewClient(ctx context.Context, config *ClientConfig, verifyConnection bool)
 		client.HTTPClient.Transport = &http.Transport{TLSClientConfig: conf}
 	}
 	c := &Client{
-		username: config.Username,
-		password: config.Password,
-		baseURL:  config.BaseURL,
-		client:   client,
+		username:     config.Username,
+		password:     config.Password,
+		baseURL:      config.BaseURL,
+		client:       client,
+		securityPath: defaultSecurityAPIPath,
 	}
 	if verifyConnection {
 		return c, c.setSecurityPath(ctx)
@@ -215,7 +219,7 @@ func (c *Client) setSecurityPath(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to getInfo: %w", err)
 	}
-	securityPath, err := getXPackStr(info.Version.Number)
+	securityPath, err := getSecurityAPIPath(info.Version.Number)
 	if err != nil {
 		return err
 	}
@@ -236,7 +240,7 @@ func (c *Client) getInfo(ctx context.Context) (*esInfo, error) {
 	return ret, nil
 }
 
-func getXPackStr(versionIn string) (string, error) {
+func getSecurityAPIPath(versionIn string) (string, error) {
 	v, err := version.NewVersion(versionIn)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse version: %w", err)
@@ -244,7 +248,7 @@ func getXPackStr(versionIn string) (string, error) {
 	if v.Segments()[0] < 7 {
 		return "/_xpack/security", nil
 	} else {
-		return "/_security", nil
+		return defaultSecurityAPIPath, nil
 	}
 }
 

@@ -373,7 +373,7 @@ func NewElasticSearchEnv(t *testing.T, client *http.Client, retAddress string, v
 		Client:   client,
 		BaseURL:  retAddress,
 	}
-	xpackStr, err := getXPackStr(version)
+	xpackStr, err := getSecurityAPIPath(version)
 	if err != nil {
 		t.Fatalf("failed to determine Xpack api path: %s", err)
 	}
