@@ -145,7 +145,6 @@ func giveBadResponses(w http.ResponseWriter, r *http.Request) {
 }
 
 func Test_setSecurityPath(t *testing.T) {
-
 	type testCase struct {
 		esInfoHandler http.HandlerFunc
 		expectedPath  string
@@ -165,13 +164,15 @@ func Test_setSecurityPath(t *testing.T) {
 			},
 		},
 		"bad version": {
-			wantErr: true,
+			wantErr:      true,
+			expectedPath: "/_security",
 			esInfoHandler: func(w http.ResponseWriter, r *http.Request) {
 				esBaseURLEndpoint(w, r, "asdf")
 			},
 		},
 		"empty version": {
-			wantErr: true,
+			wantErr:      true,
+			expectedPath: "/_security",
 			esInfoHandler: func(w http.ResponseWriter, r *http.Request) {
 				esBaseURLEndpoint(w, r, "")
 			},
