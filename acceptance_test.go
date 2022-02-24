@@ -62,7 +62,6 @@ $ curl \
 
 */
 func Test_Acceptance(t *testing.T) {
-
 	if os.Getenv("VAULT_ACC") != "1" {
 		t.SkipNow()
 	}
@@ -136,10 +135,7 @@ func (e *Environment) Test_WriteConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer writeResp.Body.Close()
-	if writeResp.StatusCode != 200 {
-		body, _ := ioutil.ReadAll(writeResp.Body)
-		t.Fatalf("expected 200 but received %d: %s", writeResp.StatusCode, string(body))
-	}
+	testResponseSuccess(t, writeResp)
 
 	// Read it and make sure it's holding expected values.
 	readResp, err := e.doVaultReq(http.MethodGet, "/v1/database/config/my-elasticsearch-database", nil)
@@ -147,9 +143,7 @@ func (e *Environment) Test_WriteConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer readResp.Body.Close()
-	if readResp.StatusCode != 200 {
-		t.Fatalf("expected 200 but received %d", readResp.StatusCode)
-	}
+	testResponseSuccess(t, readResp)
 	readRespBody := make(map[string]interface{})
 	if err := json.NewDecoder(readResp.Body).Decode(&readRespBody); err != nil {
 		t.Fatal(err)
@@ -196,9 +190,7 @@ func (e *Environment) Test_InternallyDefinedRole(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer readResp.Body.Close()
-	if readResp.StatusCode != 200 {
-		t.Fatalf("expected 200 but received %d", readResp.StatusCode)
-	}
+	testResponseSuccess(t, readResp)
 	readRespBody := make(map[string]interface{})
 	if err := json.NewDecoder(readResp.Body).Decode(&readRespBody); err != nil {
 		t.Fatal(err)
@@ -224,9 +216,7 @@ func (e *Environment) Test_InternallyDefinedRole(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer credsResp.Body.Close()
-	if credsResp.StatusCode != 200 {
-		t.Fatalf("expected 200 but received %d", credsResp.StatusCode)
-	}
+	testResponseSuccess(t, credsResp)
 
 	credsRespBody := make(map[string]interface{})
 
@@ -298,9 +288,7 @@ func (e *Environment) Test_ExternallyDefinedRole(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer readResp.Body.Close()
-	if readResp.StatusCode != 200 {
-		t.Fatalf("expected 200 but received %d", readResp.StatusCode)
-	}
+	testResponseSuccess(t, readResp)
 	readRespBody := make(map[string]interface{})
 	if err := json.NewDecoder(readResp.Body).Decode(&readRespBody); err != nil {
 		t.Fatal(err)
@@ -326,9 +314,7 @@ func (e *Environment) Test_ExternallyDefinedRole(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer credsResp.Body.Close()
-	if credsResp.StatusCode != 200 {
-		t.Fatalf("expected 200 but received %d", credsResp.StatusCode)
-	}
+	testResponseSuccess(t, credsResp)
 	credsRespBody := make(map[string]interface{})
 	if err := json.NewDecoder(credsResp.Body).Decode(&credsRespBody); err != nil {
 		t.Fatal(err)
@@ -382,9 +368,7 @@ func (e *Environment) Test_RenewCredentials(t *testing.T) {
 	if err := json.NewDecoder(firstRenewal.Body).Decode(&result); err != nil {
 		t.Fatal(err)
 	}
-	if firstRenewal.StatusCode != 200 {
-		t.Fatalf("%d: %s", firstRenewal.StatusCode, result)
-	}
+	testResponseSuccess(t, firstRenewal)
 	if result["lease_duration"].(float64) != 100 {
 		t.Fatal("expected lease_duration of 100")
 	}
@@ -496,6 +480,14 @@ func (e *Environment) Test_Raciness(t *testing.T) {
 	}()
 	close(start)
 	time.Sleep(time.Second * 10)
+}
+
+func testResponseSuccess(t *testing.T, resp *http.Response) {
+	t.Helper()
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		body, _ := ioutil.ReadAll(resp.Body)
+		t.Fatalf("expected Success but received %d: %s", resp.StatusCode, string(body))
+	}
 }
 
 func (e *Environment) doVaultReq(method, endpoint string, body map[string]interface{}) (resp *http.Response, err error) {
