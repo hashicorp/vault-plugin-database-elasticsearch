@@ -484,8 +484,15 @@ func (e *Environment) Test_Raciness(t *testing.T) {
 
 func testResponseSuccess(t *testing.T, resp *http.Response) {
 	t.Helper()
+	if resp == nil {
+		t.Fatalf("expected Success but received nil")
+	}
+
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		body, _ := ioutil.ReadAll(resp.Body)
+		var body []byte
+		if resp.Body != nil {
+			body, _ = ioutil.ReadAll(resp.Body)
+		}
 		t.Fatalf("expected Success but received %d: %s", resp.StatusCode, string(body))
 	}
 }
