@@ -66,9 +66,16 @@ func (f *FakeElasticsearch) HandleRequests(w http.ResponseWriter, r *http.Reques
 			return
 		}
 	}
-	objName := strings.Split(r.URL.Path, "/")[4]
+	pathSplit := strings.Split(r.URL.Path, "/")
+	objName := ""
+	if strings.HasPrefix(r.URL.Path, "/_security") {
+		objName = pathSplit[3]
+	} else {
+		objName = pathSplit[4]
+	}
 	switch {
 	case strings.HasPrefix(r.URL.Path, "/_xpack/security/role/"):
+	case strings.HasPrefix(r.URL.Path, "/_security/role/"):
 		switch r.Method {
 		case http.MethodPost:
 			if _, found := f.Roles[objName]; found {
@@ -97,6 +104,7 @@ func (f *FakeElasticsearch) HandleRequests(w http.ResponseWriter, r *http.Reques
 			return
 		}
 	case strings.HasPrefix(r.URL.Path, "/_xpack/security/user/") && !strings.HasSuffix(r.URL.Path, "_password"):
+	case strings.HasPrefix(r.URL.Path, "/_security/user/") && !strings.HasSuffix(r.URL.Path, "_password"):
 		switch r.Method {
 		case http.MethodPost:
 			if _, found := f.Users[objName]; found {
@@ -116,6 +124,7 @@ func (f *FakeElasticsearch) HandleRequests(w http.ResponseWriter, r *http.Reques
 			return
 		}
 	case strings.HasPrefix(r.URL.Path, "/_xpack/security/user/") && strings.HasSuffix(r.URL.Path, "_password"):
+	case strings.HasPrefix(r.URL.Path, "/_security/user/") && strings.HasSuffix(r.URL.Path, "_password"):
 		switch r.Method {
 		case http.MethodPost:
 			if body["password"].(string) == "" {

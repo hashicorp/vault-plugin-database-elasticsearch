@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"path"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -32,27 +33,32 @@ const (
 )
 
 func TestIntegration_Container(t *testing.T) {
-	cleanup, client, retAddress := prepareTestContainer(t)
-	defer cleanup()
-	verifyTestContainer(t, retAddress)
-	tc := NewElasticSearchEnv(t, client, retAddress)
+	versions := []string{"6.8.13", "7.9.1", "8.1.3"}
+	for _, version := range versions {
+		t.Run(version, func(t *testing.T) {
+			cleanup, client, retAddress := prepareTestContainer(t, version)
+			defer cleanup()
+			verifyTestContainer(t, retAddress)
+			tc := NewElasticSearchEnv(t, client, retAddress, version)
 
-	env := &IntegrationTestEnv{
-		Username:      esVaultUser,
-		Password:      esVaultPassword,
-		URL:           tc.BaseURL,
-		CaCert:        filepath.Join("testdata", "certs", "rootCA.pem"),
-		ClientCert:    filepath.Join("testdata", "certs", "client.pem"),
-		ClientKey:     filepath.Join("testdata", "certs", "client-key.pem"),
-		Elasticsearch: &Elasticsearch{},
-		TestUsers:     make(map[string]dbplugin.Statements),
-		TestCreds:     make(map[string]string),
-		tc:            tc,
+			env := &IntegrationTestEnv{
+				Username:      esVaultUser,
+				Password:      esVaultPassword,
+				URL:           tc.BaseURL,
+				CaCert:        filepath.Join("testdata", "certs", "rootCA.pem"),
+				ClientCert:    filepath.Join("testdata", "certs", "client.pem"),
+				ClientKey:     filepath.Join("testdata", "certs", "client-key.pem"),
+				Elasticsearch: &Elasticsearch{},
+				TestUsers:     make(map[string]dbplugin.Statements),
+				TestCreds:     make(map[string]string),
+				tc:            tc,
+			}
+			t.Run("test init", env.TestElasticsearch_Initialize)
+			t.Run("test create user", env.TestElasticsearch_NewUser)
+			t.Run("test delete user", env.TestElasticsearch_DeleteUser)
+			t.Run("test update user", env.TestElasticsearch_UpdateUser)
+		})
 	}
-	t.Run("test init", env.TestElasticsearch_Initialize)
-	t.Run("test create user", env.TestElasticsearch_NewUser)
-	t.Run("test delete user", env.TestElasticsearch_DeleteUser)
-	t.Run("test update user", env.TestElasticsearch_UpdateUser)
 }
 
 type IntegrationTestEnv struct {
@@ -63,6 +69,16 @@ type IntegrationTestEnv struct {
 	TestCreds                     map[string]string
 
 	tc *ElasticSearchEnv
+}
+
+func getXPackStr(t *testing.T, version string) string {
+	t.Helper()
+
+	split := strings.Split(version, ".")
+	if split[0] < "7" {
+		return oldSecurityAPIPath
+	}
+	return defaultSecurityAPIPath
 }
 
 func (e *IntegrationTestEnv) TestElasticsearch_Initialize(t *testing.T) {
@@ -76,6 +92,9 @@ func (e *IntegrationTestEnv) TestElasticsearch_Initialize(t *testing.T) {
 			"client_key":  e.ClientKey,
 		},
 		VerifyConnection: true,
+	}
+	if e.tc.XPackStr == oldSecurityAPIPath {
+		req.Config["use_old_xpack"] = true
 	}
 	expectedConfig := copyMap(req.Config)
 	resp := dbtesting.AssertInitialize(t, e.Elasticsearch, req)
@@ -176,7 +195,7 @@ func readCertFile(t *testing.T, filename string) []byte {
 	return b
 }
 
-func prepareTestContainer(t *testing.T) (cleanup func(), client *http.Client, retAddress string) {
+func prepareTestContainer(t *testing.T, version string) (cleanup func(), client *http.Client, retAddress string) {
 	t.Helper()
 
 	certsdir, err := filepath.Abs(filepath.Join("testdata", "certs"))
@@ -203,7 +222,7 @@ func prepareTestContainer(t *testing.T) (cleanup func(), client *http.Client, re
 
 	dockerOptions := &dockertest.RunOptions{
 		Repository: "docker.elastic.co/elasticsearch/elasticsearch",
-		Tag:        "7.3.0",
+		Tag:        version,
 		WorkingDir: "/usr/share/elasticsearch/",
 		Mounts:     []string{certsdir + ":/usr/share/elasticsearch/config/certificates"},
 		Env:        env,
@@ -342,9 +361,10 @@ type ElasticSearchEnv struct {
 	Username, Password string
 	BaseURL            string
 	Client             *http.Client
+	XPackStr           string
 }
 
-func NewElasticSearchEnv(t *testing.T, client *http.Client, retAddress string) *ElasticSearchEnv {
+func NewElasticSearchEnv(t *testing.T, client *http.Client, retAddress, version string) *ElasticSearchEnv {
 	t.Helper()
 
 	tc := &ElasticSearchEnv{
@@ -352,6 +372,7 @@ func NewElasticSearchEnv(t *testing.T, client *http.Client, retAddress string) *
 		Password: esInitialPassword,
 		Client:   client,
 		BaseURL:  retAddress,
+		XPackStr: getXPackStr(t, version),
 	}
 	// Set the elastic user's password
 	tc.SetPassword(t, "elastic", esSecondPassword)
@@ -371,7 +392,7 @@ func NewElasticSearchEnv(t *testing.T, client *http.Client, retAddress string) *
 func (e *ElasticSearchEnv) Authenticate(t *testing.T, user, password string) bool {
 	t.Helper()
 
-	endpoint := "/_xpack/security/_authenticate"
+	endpoint := path.Join(e.XPackStr, "_authenticate")
 	method := http.MethodGet
 
 	req, err := http.NewRequest(method, e.BaseURL+endpoint, nil)
@@ -404,7 +425,7 @@ func (e *ElasticSearchEnv) Authenticate(t *testing.T, user, password string) boo
 func (e *ElasticSearchEnv) SetPassword(t *testing.T, user, password string) {
 	t.Helper()
 
-	endpoint := "/_xpack/security/user/" + user + "/_password"
+	endpoint := path.Join(e.XPackStr, "user", user, "_password")
 	method := http.MethodPut
 
 	body, err := json.Marshal(map[string]string{"password": password})
@@ -423,10 +444,10 @@ func (e *ElasticSearchEnv) SetPassword(t *testing.T, user, password string) {
 func (e *ElasticSearchEnv) createVaultRole(t *testing.T) {
 	t.Helper()
 
-	endpoint := "/_xpack/security/role/vault"
+	endpoint := path.Join(e.XPackStr, "/role/vault")
 	method := http.MethodPost
 
-	body, err := json.Marshal(map[string][]string{"cluster": []string{"manage_security"}})
+	body, err := json.Marshal(map[string][]string{"cluster": {"manage_security"}})
 	if err != nil {
 		t.Fatalf("failed to marshal the body to create the vault role: %s", err)
 	}
@@ -443,7 +464,7 @@ func (e *ElasticSearchEnv) CreateVaultUser(t *testing.T) {
 	t.Helper()
 	e.createVaultRole(t)
 
-	endpoint := "/_xpack/security/user/" + esVaultUser
+	endpoint := path.Join(e.XPackStr, "user", esVaultUser)
 	method := http.MethodPost
 
 	type user struct {

@@ -14,9 +14,18 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"path"
 
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/hashicorp/go-rootcerts"
+)
+
+const (
+	// defaultSecurityAPIPath is the security API path for Elasticsearch 7+
+	defaultSecurityAPIPath = "/_security"
+
+	// oldSecurityPath is the security API path for Elasticsearch <=6
+	oldSecurityAPIPath = "/_xpack/security"
 )
 
 type ClientConfig struct {
@@ -24,6 +33,8 @@ type ClientConfig struct {
 
 	// Leave this nil to flag that TLS is not desired
 	TLSConfig *TLSConfig
+
+	UseOldSecurityPath bool
 }
 
 // TLSConfig contains the parameters needed to configure TLS on the HTTP client
@@ -78,23 +89,32 @@ func NewClient(config *ClientConfig) (*Client, error) {
 
 		client.HTTPClient.Transport = &http.Transport{TLSClientConfig: conf}
 	}
-	return &Client{
-		username: config.Username,
-		password: config.Password,
-		baseURL:  config.BaseURL,
-		client:   client,
-	}, nil
+	c := &Client{
+		username:     config.Username,
+		password:     config.Password,
+		baseURL:      config.BaseURL,
+		client:       client,
+		securityPath: defaultSecurityAPIPath,
+	}
+	if config.UseOldSecurityPath {
+		c.securityPath = oldSecurityAPIPath
+	}
+
+	return c, nil
 }
 
 type Client struct {
-	username, password, baseURL string
-	client                      *retryablehttp.Client
+	username     string
+	password     string
+	baseURL      string
+	securityPath string
+	client       *retryablehttp.Client
 }
 
 // Role management
 
 func (c *Client) CreateRole(ctx context.Context, name string, role map[string]interface{}) error {
-	endpoint := "/_xpack/security/role/" + name
+	endpoint := path.Join(c.securityPath, "role", name)
 	method := http.MethodPost
 
 	roleBytes, err := json.Marshal(role)
@@ -110,7 +130,7 @@ func (c *Client) CreateRole(ctx context.Context, name string, role map[string]in
 
 // GetRole returns nil, nil if role is unfound.
 func (c *Client) GetRole(ctx context.Context, name string) (map[string]interface{}, error) {
-	endpoint := "/_xpack/security/role/" + name
+	endpoint := path.Join(c.securityPath, "role", name)
 	method := http.MethodGet
 
 	req, err := http.NewRequest(method, c.baseURL+endpoint, nil)
@@ -125,7 +145,7 @@ func (c *Client) GetRole(ctx context.Context, name string) (map[string]interface
 }
 
 func (c *Client) DeleteRole(ctx context.Context, name string) error {
-	endpoint := "/_xpack/security/role/" + name
+	endpoint := path.Join(c.securityPath, "role", name)
 	method := http.MethodDelete
 
 	req, err := http.NewRequest(method, c.baseURL+endpoint, nil)
@@ -143,7 +163,7 @@ type User struct {
 }
 
 func (c *Client) CreateUser(ctx context.Context, name string, user *User) error {
-	endpoint := "/_xpack/security/user/" + name
+	endpoint := path.Join(c.securityPath, "user", name)
 	method := http.MethodPost
 
 	userJson, err := json.Marshal(user)
@@ -158,7 +178,7 @@ func (c *Client) CreateUser(ctx context.Context, name string, user *User) error 
 }
 
 func (c *Client) ChangePassword(ctx context.Context, name, newPassword string) error {
-	endpoint := "/_xpack/security/user/" + name + "/_password"
+	endpoint := path.Join(c.securityPath, "user", name, "_password")
 	method := http.MethodPost
 
 	pwdChangeBodyJson, err := json.Marshal(map[string]string{"password": newPassword})
@@ -173,7 +193,7 @@ func (c *Client) ChangePassword(ctx context.Context, name, newPassword string) e
 }
 
 func (c *Client) DeleteUser(ctx context.Context, name string) error {
-	endpoint := "/_xpack/security/user/" + name
+	endpoint := path.Join(c.securityPath, "user", name)
 	method := http.MethodDelete
 
 	req, err := http.NewRequest(method, c.baseURL+endpoint, nil)
