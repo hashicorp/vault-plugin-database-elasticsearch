@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -58,7 +59,7 @@ $ curl \
     -k -X POST \
     -H "Content-Type: application/json" \
     -d '{"cluster": ["manage_security"]}' \
-    https://elastic:$ES_PASSWORD@localhost:9200/_xpack/security/role/vault
+    https://elastic:$ES_PASSWORD@localhost:9200/_security/role/vault
 
 */
 func Test_Acceptance(t *testing.T) {
@@ -91,6 +92,13 @@ func Test_Acceptance(t *testing.T) {
 		}
 		if os.Getenv("CLIENT_KEY") != "" {
 			env.Config["client_key"] = os.Getenv("CLIENT_KEY")
+		}
+		if os.Getenv("USE_OLD_XPACK") != "" {
+			b, err := strconv.ParseBool(os.Getenv("USE_OLD_XPACK"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			env.Config["use_old_xpack"] = b
 		}
 	} else {
 		log.Print("running tests against mocked Elasticsearch")
@@ -165,6 +173,9 @@ func (e *Environment) Test_WriteConfig(t *testing.T) {
 	}
 	if connectionDetails["password"] != nil {
 		t.Fatal("password should not be returned!!!!")
+	}
+	if e.Config["use_old_xpack"] != connectionDetails["use_old_xpack"] {
+		t.Fatalf(`expected "use_old_xpack" %v but received %s`, e.Config["use_old_xpack"], connectionDetails["use_old_xpack"])
 	}
 }
 

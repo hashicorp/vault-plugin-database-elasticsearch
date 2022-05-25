@@ -29,7 +29,6 @@ func New() (interface{}, error) {
 
 // Elasticsearch implements dbplugin's Database interface.
 type Elasticsearch struct {
-
 	// This protects the config from races while also allowing multiple threads
 	// to read the config simultaneously when it's not changing.
 	mux sync.RWMutex
@@ -113,10 +112,14 @@ func (es *Elasticsearch) Initialize(ctx context.Context, req dbplugin.Initialize
 		}
 	}
 
-	// Check the one optional bool field is in the expected format.
-	if raw, ok := req.Config["insecure"]; ok {
+	// Ensure optional bool fields are provided in the expected format.
+	for _, optionalBool := range []string{"insecure", "use_old_xpack"} {
+		raw, ok := req.Config[optionalBool]
+		if !ok {
+			continue
+		}
 		if _, ok = raw.(bool); !ok {
-			return dbplugin.InitializeResponse{}, errors.New(`"insecure" must be a bool`)
+			return dbplugin.InitializeResponse{}, fmt.Errorf(`%q must be a bool`, optionalBool)
 		}
 	}
 
@@ -310,6 +313,9 @@ func buildClient(config map[string]interface{}) (*Client, error) {
 	if raw, ok := config["insecure"]; ok {
 		tlsConf.Insecure = raw.(bool)
 		hasTLSConf = true
+	}
+	if raw, ok := config["use_old_xpack"]; ok {
+		clientConfig.UseOldSecurityPath = raw.(bool)
 	}
 
 	// We should only fulfill the clientConfig's TLSConfig pointer if we actually

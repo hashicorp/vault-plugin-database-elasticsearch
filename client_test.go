@@ -107,21 +107,25 @@ func TestClient_BadResponses(t *testing.T) {
 func giveBadResponses(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/_xpack/security/role/200-but-body-changed":
+	case "/_security/role/200-but-body-changed":
 		w.WriteHeader(200)
 		w.Write([]byte(`<html>I switched to html!</html>`))
 		return
 
 	case "/_xpack/security/role/404-not-found":
+	case "/_security/role/404-not-found":
 		w.WriteHeader(404)
 		w.Write([]byte(`{"something": "unexpected"}`))
 		return
 
 	case "/_xpack/security/role/500-mysterious-internal-server-error":
+	case "/_security/role/500-mysterious-internal-server-error":
 		w.WriteHeader(500)
 		w.Write([]byte(`<html>Internal Server Error</html>`))
 		return
 
 	case "/_xpack/security/role/503-unavailable":
+	case "/_security/role/503-unavailable":
 		w.WriteHeader(503)
 		w.Write([]byte(`<html>Service Unavailable</html>`))
 		return

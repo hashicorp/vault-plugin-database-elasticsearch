@@ -52,7 +52,7 @@ $ curl \
     -X POST \
     -H "Content-Type: application/json" \
     -d '{"cluster": ["manage_security"]}' \
-    http://elastic:$PASSWORD@localhost:9200/_xpack/security/role/vault
+    http://elastic:$PASSWORD@localhost:9200/_security/role/vault
 ```
 
 Next, create a user for Vault associated with that role.
@@ -62,7 +62,7 @@ $ curl \
     -X POST \
     -H "Content-Type: application/json" \
     -d @data.json \
-    http://elastic:$PASSWORD@localhost:9200/_xpack/security/user/vault
+    http://elastic:$PASSWORD@localhost:9200/_security/user/vault
 ```
 
 The contents of `data.json` in this example are:

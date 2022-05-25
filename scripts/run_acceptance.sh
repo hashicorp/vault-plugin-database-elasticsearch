@@ -29,5 +29,6 @@ export VAULT_TOKEN=root
 # export CA_CERT=$PWD/scripts/certs/ca/ca.crt
 # export CLIENT_CERT=$PWD/scripts/certs/es01/es01.crt
 # export CLIENT_KEY=$PWD/scripts/certs/es01/es01.key
+# export USE_OLD_XPACK=true
 
 go test -v ./... -run Test_Acceptance
