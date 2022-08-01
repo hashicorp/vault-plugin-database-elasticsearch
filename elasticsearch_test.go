@@ -1,6 +1,9 @@
 package elasticsearch
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -28,6 +31,7 @@ func TestElasticsearch(t *testing.T) {
 
 	t.Run("test type", env.TestElasticsearch_Type)
 	t.Run("test initialize", env.TestElasticsearch_Initialize)
+	t.Run("test initialize with options", env.TestElasticsearch_Initialize_OptionalConfig)
 	t.Run("test new user", env.TestElasticsearch_NewUser)
 	t.Run("test delete user", env.TestElasticsearch_DeleteUser)
 	t.Run("test update user", env.TestElasticsearch_UpdateUser)
@@ -62,6 +66,92 @@ func (e *UnitTestEnv) TestElasticsearch_Initialize(t *testing.T) {
 
 	if !reflect.DeepEqual(resp.Config, expectedConfig) {
 		t.Fatalf("Actual config: %#v\nExpected config: %#v", resp.Config, expectedConfig)
+	}
+}
+
+func (e *UnitTestEnv) TestElasticsearch_Initialize_OptionalConfig(t *testing.T) {
+	testCases := []struct {
+		configBytes []byte // use raw bytes here so we can vary how we provide the boolean
+		insecureVal bool
+		expectErr   bool
+	}{
+		{
+			[]byte(fmt.Sprintf(`{
+			"username": "%v",
+			"password": "%v",
+			"url":      "%v",
+			"insecure": "true"
+		}`, e.Username, e.Password, e.URL)),
+			true,
+			false,
+		},
+		{
+			[]byte(fmt.Sprintf(`{
+			"username": "%v",
+			"password": "%v",
+			"url":      "%v",
+			"insecure": true
+		}`, e.Username, e.Password, e.URL)),
+			true,
+			false,
+		},
+		{
+			[]byte(fmt.Sprintf(`{
+			"username": "%v",
+			"password": "%v",
+			"url":      "%v",
+			"insecure": "1"
+		}`, e.Username, e.Password, e.URL)),
+			true,
+			false,
+		},
+		{
+			[]byte(fmt.Sprintf(`{
+			"username": "%v",
+			"password": "%v",
+			"url":      "%v",
+			"insecure": "0"
+		}`, e.Username, e.Password, e.URL)),
+			false,
+			false,
+		},
+		{
+			[]byte(`{}`),
+			false,
+			true,
+		},
+	}
+
+	for _, testCase := range testCases {
+		var conf map[string]interface{}
+		if err := json.Unmarshal(testCase.configBytes, &conf); err != nil {
+			panic(err)
+		}
+
+		req := dbplugin.InitializeRequest{
+			Config:           conf,
+			VerifyConnection: true,
+		}
+		resp, err := e.Elasticsearch.Initialize(context.Background(), req)
+
+		if testCase.expectErr && err == nil {
+			t.Fatalf("expected error")
+		}
+		if !testCase.expectErr && err != nil {
+			t.Fatalf("unexpected error %s", err.Error())
+		}
+
+		expectedConfig := copyMap(req.Config)
+		if !testCase.expectErr {
+			expectedConfig["insecure"] = testCase.insecureVal
+		} else {
+			// we got an expected error so the config will be nil
+			expectedConfig = map[string]interface{}(nil)
+		}
+
+		if !reflect.DeepEqual(resp.Config, expectedConfig) {
+			t.Fatalf("Actual config: %#v\nExpected config: %#v", resp.Config, expectedConfig)
+		}
 	}
 }
 
