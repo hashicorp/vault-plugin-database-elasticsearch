@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/hashicorp/errwrap"
@@ -118,9 +119,12 @@ func (es *Elasticsearch) Initialize(ctx context.Context, req dbplugin.Initialize
 		if !ok {
 			continue
 		}
-		if _, ok = raw.(bool); !ok {
+
+		boolVal, err := parseBool(raw)
+		if err != nil {
 			return dbplugin.InitializeResponse{}, fmt.Errorf(`%q must be a bool`, optionalBool)
 		}
+		req.Config[optionalBool] = boolVal
 	}
 
 	// Test the given config to see if we can make a client.
@@ -329,4 +333,15 @@ func buildClient(config map[string]interface{}) (*Client, error) {
 		return nil, err
 	}
 	return client, nil
+}
+
+func parseBool(rawVal interface{}) (bool, error) {
+	switch val := rawVal.(type) {
+	case bool:
+		return val, nil
+	case string:
+		return strconv.ParseBool(val)
+	}
+
+	return false, fmt.Errorf("could not parse type")
 }
