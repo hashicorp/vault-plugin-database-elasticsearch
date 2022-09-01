@@ -17,10 +17,6 @@ func main() {
 
 // Run starts serving the plugin
 func Run() error {
-	db, err := elasticsearch.New()
-	if err != nil {
-		return err
-	}
-	dbplugin.Serve(db.(dbplugin.Database))
+	dbplugin.ServeMultiplex(elasticsearch.New)
 	return nil
 }
