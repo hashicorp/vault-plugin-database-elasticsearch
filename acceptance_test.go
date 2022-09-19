@@ -28,9 +28,10 @@ $ make dev
 Then start Vault with commands like:
 
 $ export VAULT_API_ADDR=http://localhost:8200
-$ vault server -dev \
-	-dev-root-token-id=root \
-	-dev-plugin-dir=$GOPATH/src/github.com/hashicorp/vault-plugin-database-elasticsearch/bin
+
+	$ vault server -dev \
+		-dev-root-token-id=root \
+		-dev-plugin-dir=$GOPATH/src/github.com/hashicorp/vault-plugin-database-elasticsearch/bin
 
 The last flag automatically adds this plugin to the plugin catalog. Then set the following variables:
 
@@ -55,12 +56,11 @@ $ export CLIENT_KEY=$ES_HOME/config/certs/elastic-certificates.key.pem
 
 Also create a 'vault' role for Test_ExternallyDefinedRole, ex:
 
-$ curl \
-    -k -X POST \
-    -H "Content-Type: application/json" \
-    -d '{"cluster": ["manage_security"]}' \
-    https://elastic:$ES_PASSWORD@localhost:9200/_security/role/vault
-
+	$ curl \
+	    -k -X POST \
+	    -H "Content-Type: application/json" \
+	    -d '{"cluster": ["manage_security"]}' \
+	    https://elastic:$ES_PASSWORD@localhost:9200/_security/role/vault
 */
 func Test_Acceptance(t *testing.T) {
 	if os.Getenv("VAULT_ACC") != "1" {
