@@ -17,7 +17,7 @@ import (
 
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
-	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
+	"github.com/hashicorp/vault/sdk/database/dbplugin/v5"
 	dbtesting "github.com/hashicorp/vault/sdk/database/dbplugin/v5/testing"
 	"github.com/ory/dockertest"
 )
@@ -298,7 +298,8 @@ func verifyTestContainer(t *testing.T, address string) {
 	if err == nil {
 		t.Fatal("want error with 'x509: certificate signed by unknown authority', got none")
 	}
-	if !strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
+	if !(strings.Contains(err.Error(), "x509: certificate signed by unknown authority") ||
+		(strings.Contains(err.Error(), "certificate is not trusted"))) {
 		t.Fatalf("want error with 'x509: certificate signed by unknown authority', got %s", err)
 	}
 

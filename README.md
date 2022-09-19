@@ -12,23 +12,23 @@ If you would like to install a different version of this plugin to that which is
 
 ### Enable X-Pack Security in Elasticsearch
 
-Read [Securing the Elastic Stack](https://www.elastic.co/guide/en/elastic-stack-overview/7.1/elasticsearch-security.html) and 
-follow [its instructions for enabling X-Pack Security](https://www.elastic.co/guide/en/elasticsearch/reference/7.1/setup-xpack.html). 
+Read [Securing the Elastic Stack](https://www.elastic.co/guide/en/elastic-stack-overview/7.1/elasticsearch-security.html) and
+follow [its instructions for enabling X-Pack Security](https://www.elastic.co/guide/en/elasticsearch/reference/7.1/setup-xpack.html).
 
 ### Enable Encrypted Communications
 
 This plugin communicates with Elasticsearch's security API. In ES 7.1.1, you must enable TLS to consume that API.
 
 To set up TLS in Elasticsearch, first read [encrypted communications](https://www.elastic.co/guide/en/elastic-stack-overview/7.1/encrypting-communications.html)
-and go through its instructions on [encrypting HTTP client communications](https://www.elastic.co/guide/en/elasticsearch/reference/7.1/configuring-tls.html#tls-http). 
+and go through its instructions on [encrypting HTTP client communications](https://www.elastic.co/guide/en/elasticsearch/reference/7.1/configuring-tls.html#tls-http).
 
-After enabling TLS on the Elasticsearch side, you'll need to convert the .p12 certificates you generated to other formats so they can be 
-used by Vault. [Here is an example using OpenSSL](https://stackoverflow.com/questions/15144046/converting-pkcs12-certificate-into-pem-using-openssl) 
+After enabling TLS on the Elasticsearch side, you'll need to convert the .p12 certificates you generated to other formats so they can be
+used by Vault. [Here is an example using OpenSSL](https://stackoverflow.com/questions/15144046/converting-pkcs12-certificate-into-pem-using-openssl)
 to convert our .p12 certs to the pem format.
 
 Also, on the instance running Elasticsearch, we needed to install our newly generated CA certificate that was originally in the .p12 format.
-We did this by converting the .p12 CA cert to a pem, and then further converting that 
-[pem to a crt](https://stackoverflow.com/questions/13732826/convert-pem-to-crt-and-key), adding that crt to `/usr/share/ca-certificates/extra`, 
+We did this by converting the .p12 CA cert to a pem, and then further converting that
+[pem to a crt](https://stackoverflow.com/questions/13732826/convert-pem-to-crt-and-key), adding that crt to `/usr/share/ca-certificates/extra`,
 and using `sudo dpkg-reconfigure ca-certificates`.
 
 The above instructions may vary if you are not using an Ubuntu machine. Please ensure you're using the methods specific to your operating
@@ -82,7 +82,7 @@ Now, Elasticsearch is configured and ready to be used with Vault.
 
 ## Example Walkthrough
 
-Here is an example of how to successfully configure and use this secrets engine using the Vault CLI. Note that the 
+Here is an example of how to successfully configure and use this secrets engine using the Vault CLI. Note that the
 `plugin_name` may need to be `vault-plugin-database-elasticsearch` if you manually mounted it rather than using the
 version of the plugin built in to Vault.
 ```
@@ -99,16 +99,16 @@ vault write database/config/my-elasticsearch-database \
     ca_cert=/usr/share/ca-certificates/extra/elastic-stack-ca.crt.pem \
     client_cert=$ES_HOME/config/certs/elastic-certificates.crt.pem \
     client_key=$ES_HOME/config/certs/elastic-certificates.key.pem
-    
+
 # create and get creds with one type of role
 vault write database/roles/internally-defined-role \
     db_name=my-elasticsearch-database \
     creation_statements='{"elasticsearch_role_definition": {"indices": [{"names":["*"], "privileges":["read"]}]}}' \
     default_ttl="1h" \
     max_ttl="24h"
-    
+
 vault read database/creds/internally-defined-role
-    
+
 # create and get creds with another type of role
 vault write database/roles/externally-defined-role \
     db_name=my-elasticsearch-database \
@@ -166,3 +166,5 @@ Or to run only the acceptance tests:
 
 See the comments in [run_acceptance.sh](./scripts/run_acceptance.sh) for
 configuration information.
+
+**Note**: The acceptance test for 6.8.13 generally won't pass on M1 Macs due to the lack of an arm64 Elasticsearch 6.8.13 image.
