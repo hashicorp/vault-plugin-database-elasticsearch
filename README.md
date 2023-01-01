@@ -168,3 +168,4 @@ See the comments in [run_acceptance.sh](./scripts/run_acceptance.sh) for
 configuration information.
 
 **Note**: The acceptance test for 6.8.13 generally won't pass on M1 Macs due to the lack of an arm64 Elasticsearch 6.8.13 image.
+test
