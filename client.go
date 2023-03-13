@@ -237,7 +237,7 @@ func (c *Client) do(ctx context.Context, req *http.Request, ret interface{}) err
 		}
 		if err := json.Unmarshal(body, ret); err != nil {
 			// We received a success response from the ES API but the body was in an unexpected format.
-			return fmt.Errorf("%s; %d: %s", err, resp.StatusCode, body)
+			return fmt.Errorf("unexpected format from elasticsearch api:%s; %d", err, resp.StatusCode)
 		}
 		// Body has been successfully read out.
 		return nil
