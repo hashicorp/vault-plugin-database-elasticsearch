@@ -250,5 +250,5 @@ func (c *Client) do(ctx context.Context, req *http.Request, ret interface{}) err
 	}
 
 	// We received some sort of API error. Let's return it.
-	return fmt.Errorf("error returned from elasticsearchapi: %d", resp.StatusCode)
+	return fmt.Errorf("error returned from elasticsearch api: %d", resp.StatusCode)
 }
