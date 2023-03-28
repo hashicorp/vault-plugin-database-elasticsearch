@@ -130,7 +130,7 @@ vault write -force database/rotate-root/my-elasticsearch-database
 
 ## Developing
 
-The Vault plugin system is documented on the [Vault documentation site](https://www.vaultproject.io/docs/internals/plugins.html).
+The Vault plugin system is documented on the [Vault documentation site](https://developer.hashicorp.com/vault/docs/plugins).
 
 The local_dev.sh script will build the plugin, start vault, mount the plugin,
 and run any custom commands in `./scripts/custom.sh`:

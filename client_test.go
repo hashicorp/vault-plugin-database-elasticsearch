@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/vault-plugin-database-elasticsearch/mock"
@@ -92,8 +93,8 @@ func TestClient_BadResponses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.GetRole(ctx, "200-but-body-changed"); err.Error() != "invalid character '<' looking for beginning of value; 200: <html>I switched to html!</html>" {
-		t.Fatal(`expected "invalid character '<' looking for beginning of value; 200: <html>I switched to html!</html>"`)
+	if _, err := client.GetRole(ctx, "200-but-body-changed"); !strings.Contains(err.Error(), "unexpected format from elasticsearch api") {
+		t.Fatal(`expected "unexpected format from elasticsearch api"`)
 	}
 	if role, err := client.GetRole(ctx, "404-not-found"); err != nil || role != nil {
 		// We shouldn't error on 404s because they are a success case.

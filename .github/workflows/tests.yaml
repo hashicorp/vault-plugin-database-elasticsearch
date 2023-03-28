@@ -1,32 +1,38 @@
-name: Tests
+name: Run Acceptance Tests
 
-# Run this workflow on pushes and manually
-on: [push, workflow_dispatch]
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  build:
+  run-acc-tests:
     runs-on: ubuntu-latest
-    env:
-      GO111MODULE: on
+
+    name: Go linux amd64 build
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
 
-      # cache/restore go mod
-      - uses: actions/cache@v2
+      - name: Setup go
+        uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
         with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
-      - uses: actions/setup-go@v2
-        with:
-          go-version: 1.18.1
+          go-version-file: .go-version
+          cache: true
 
       - name: Build
-        run: go build
+        env:
+          GOOS: linux
+          GOARCH: amd64
+          VERSION: ${{ needs.get-product-version.outputs.product-version }}
+          CGO_ENABLED: "0"
+        run: make bin
 
-      - name: Test
-        run: make test
+      - name: Run acceptance tests
+        run: |
+          docker pull vault &&
+          docker run -d --name vault --mount type=bind,src=${PWD}/bin,dst=/vault/file --cap-add=IPC_LOCK -e VAULT_ADDR='http://127.0.0.1:8200' -e 'VAULT_TOKEN=myroot' -e 'VAULT_DEV_ROOT_TOKEN_ID=myroot' -e 'VAULT_DEV_LISTEN_ADDRESS=127.0.0.1:8200' vault server -dev -dev-plugin-dir /vault/file &&
+          timeout 30 sh -c 'until docker exec -t vault vault status; do sleep 1; done' &&
+          make testacc
