@@ -27,14 +27,14 @@ jobs:
           GOOS: linux
           GOARCH: amd64
           CGO_ENABLED: "0"
+          VAULT_ACC: 1
+          VAULT_ADDR: http://localhost:8200
+          VAULT_TOKEN: root
         run: make dev
 
       - name: Run acceptance tests
         run: |
           docker pull vault &&
-          docker run -d --name vault --mount "type=bind,src=${PWD}/bin,dst=/vault/file" --cap-add=IPC_LOCK -e VAULT_ADDR='http://127.0.0.1:8200' -e 'VAULT_TOKEN=myroot' -e 'VAULT_DEV_ROOT_TOKEN_ID=myroot' -e 'VAULT_DEV_LISTEN_ADDRESS=127.0.0.1:8200' vault server -dev -dev-plugin-dir /vault/file &&
+          docker run -d --name vault --mount "type=bind,src=${PWD}/bin,dst=/vault/file" --cap-add=IPC_LOCK -e VAULT_ADDR="$VAULT_ADDR" -e VAULT_TOKEN="$VAULT_TOKEN" -e VAULT_DEV_ROOT_TOKEN_ID="$VAULT_TOKEN" -e VAULT_DEV_LISTEN_ADDRESS=127.0.0.1:8200 vault server -dev -dev-plugin-dir /vault/file &&
           timeout 30 sh -c 'until docker exec -t vault vault status; do sleep 1; done' &&
-          export VAULT_ACC=1
-          export VAULT_ADDR=http://localhost:8200
-          export VAULT_TOKEN=myroot
           make testacc
