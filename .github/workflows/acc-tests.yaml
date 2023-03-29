@@ -34,7 +34,7 @@ jobs:
         run: |
           docker pull vault &&
           docker run -d --name vault --mount type=bind,src=${PWD}/bin,dst=/vault/file --cap-add=IPC_LOCK -p 8200:8200 -e VAULT_ADDR="$VAULT_ADDR" -e VAULT_TOKEN="$VAULT_TOKEN" -e VAULT_DEV_ROOT_TOKEN_ID="$VAULT_TOKEN" -e VAULT_DEV_LISTEN_ADDRESS="$VAULT_DEV_LISTEN_ADDRESS" vault server -dev -dev-plugin-dir /vault/file &&
-          timeout 20 sh -c 'until ! docker ps -a; do sleep 1; done'
+          timeout 30 sh -c 'until ! docker ps -a; do sleep 1; done'
           vault status
           docker logs vault
           timeout 20 sh -c 'until docker ps -a; do sleep 1; done'
