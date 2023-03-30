@@ -36,10 +36,14 @@ jobs:
           docker pull vault
           docker events > docker-events.log &
           docker run -d --name vault --mount type=bind,src=${PWD}/bin,dst=/vault/file --cap-add=IPC_LOCK -e VAULT_ADDR='http://127.0.0.1:8200' -e 'VAULT_TOKEN=myroot' -e 'VAULT_DEV_ROOT_TOKEN_ID=myroot' -e 'VAULT_DEV_LISTEN_ADDRESS=127.0.0.1:8200' vault server -dev -dev-plugin-dir /vault/file
+          docker container logs -f vault > docker-container.log &
           sleep 10
           # docker exec -t vault vault status
           # sleep 5
+          echo "Event log:"
           cat docker-events.log
+          echo "Container log:"
+          cat docker-container.log
           # docker pull vault &&
           # docker run -d --name vault --mount type=bind,src=${PWD}/bin,dst=/vault/file --cap-add=IPC_LOCK -p 8200:8200 -e VAULT_ADDR="$VAULT_ADDR" -e VAULT_TOKEN="$VAULT_TOKEN" -e VAULT_DEV_ROOT_TOKEN_ID="$VAULT_TOKEN" -e VAULT_DEV_LISTEN_ADDRESS="$VAULT_DEV_LISTEN_ADDRESS" vault server -dev -dev-plugin-dir /vault/file &&
           # timeout 30 sh -c 'until ! docker ps -a; do sleep 1; done'
