@@ -1,11 +1,6 @@
-# Determine this makefile's path.
-# Be sure to place this BEFORE `include` directives, if any.
-THIS_FILE := $(lastword $(MAKEFILE_LIST))
-
 TEST?=$$(go list ./... | grep -v /vendor/ | grep -v /integ)
 GOFMT_FILES?=$$(find . -name '*.go' | grep -v vendor)
-EXTERNAL_TOOLS=\
-	github.com/mitchellh/gox
+EXTERNAL_TOOLS=
 
 default: dev
 
