@@ -1,5 +1,14 @@
 ## Unreleased
 
+## v0.12.2
+* Dependency upgrades 
+
+## v0.12.1
+* No new features
+
+## v0.12.0
+* No new features
+
 ## 0.11.1 (Aug 1, 2022)
 
 Bug Fixes:
