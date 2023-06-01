@@ -12,7 +12,7 @@ require (
 	github.com/hashicorp/go-secure-stdlib/tlsutil v0.1.2
 	github.com/hashicorp/vault/sdk v0.9.0
 	github.com/ory/dockertest v3.3.5+incompatible
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.4
 )
 
 require (
