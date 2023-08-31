@@ -1,9 +1,19 @@
 ## Unreleased
 
-## v0.12.2
+## v0.13.3
+Improvements:
+* Updated dependencies:
+  * github.com/hashicorp/go-retryablehttp v0.7.2 -> v0.7.4
+  * github.com/hashicorp/vault/sdk v0.9.0 -> v0.9.2
+  * github.com/stretchr/testify v1.8.2 -> v1.8.4
+
+## v0.13.2
 * Dependency upgrades 
 
-## v0.12.1
+## v0.13.1
+* No new features
+
+## v0.13.0
 * No new features
 
 ## v0.12.0
