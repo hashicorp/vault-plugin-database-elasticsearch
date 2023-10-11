@@ -19,27 +19,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//func TestElasticsearch(t *testing.T) {
-//	esAPI := mock.Elasticsearch()
-//	ts := httptest.NewServer(http.HandlerFunc(esAPI.HandleRequests))
-//	defer ts.Close()
-//
-//	env := &unitTestEnv{
-//		Username:      esAPI.Username(),
-//		Password:      esAPI.Password(),
-//		URL:           ts.URL,
-//		Elasticsearch: &Elasticsearch{},
-//		TestUsers:     make(map[string]dbplugin.Statements),
-//	}
-//
-//	t.Run("test type", env.TestElasticsearch_Type)
-//	t.Run("test initialize", env.TestElasticsearch_Initialize)
-//	t.Run("test initialize with options", env.TestElasticsearch_Initialize_OptionalConfig)
-//	t.Run("test new user", env.TestElasticsearch_NewUser)
-//	t.Run("test delete user", env.TestElasticsearch_DeleteUser)
-//	t.Run("test update user", env.TestElasticsearch_UpdateUser)
-//}
-
 type unitTestEnv struct {
 	Username, Password, URL string
 	Elasticsearch           *Elasticsearch
