@@ -19,35 +19,32 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestElasticsearch(t *testing.T) {
-	esAPI := mock.Elasticsearch()
-	ts := httptest.NewServer(http.HandlerFunc(esAPI.HandleRequests))
-	defer ts.Close()
-
-	env := &UnitTestEnv{
-		Username:      esAPI.Username(),
-		Password:      esAPI.Password(),
-		URL:           ts.URL,
-		Elasticsearch: &Elasticsearch{},
-		TestUsers:     make(map[string]dbplugin.Statements),
-	}
-
-	t.Run("test type", env.TestElasticsearch_Type)
-	t.Run("test initialize", env.TestElasticsearch_Initialize)
-	t.Run("test initialize with options", env.TestElasticsearch_Initialize_OptionalConfig)
-	t.Run("test new user", env.TestElasticsearch_NewUser)
-	t.Run("test delete user", env.TestElasticsearch_DeleteUser)
-	t.Run("test update user", env.TestElasticsearch_UpdateUser)
-}
-
-type UnitTestEnv struct {
+type unitTestEnv struct {
 	Username, Password, URL string
 	Elasticsearch           *Elasticsearch
 
 	TestUsers map[string]dbplugin.Statements
 }
 
-func (e *UnitTestEnv) TestElasticsearch_Type(t *testing.T) {
+// returns a test environment and the associated server. Be sure to Close() the server
+// at the end of your test
+func newTestEnv() (*unitTestEnv, *mock.FakeElasticsearch, *httptest.Server) {
+	esAPI := mock.Elasticsearch()
+	ts := httptest.NewServer(http.HandlerFunc(esAPI.HandleRequests))
+
+	return &unitTestEnv{
+		Username:      esAPI.Username(),
+		Password:      esAPI.Password(),
+		URL:           ts.URL,
+		Elasticsearch: &Elasticsearch{},
+		TestUsers:     make(map[string]dbplugin.Statements),
+	}, esAPI, ts
+}
+
+func TestElasticsearch_Type(t *testing.T) {
+	e, _, ts := newTestEnv()
+	defer ts.Close()
+
 	if tp, err := e.Elasticsearch.Type(); err != nil {
 		t.Fatal(err)
 	} else if tp != "elasticsearch" {
@@ -55,7 +52,10 @@ func (e *UnitTestEnv) TestElasticsearch_Type(t *testing.T) {
 	}
 }
 
-func (e *UnitTestEnv) TestElasticsearch_Initialize(t *testing.T) {
+func TestElasticsearch_Initialize(t *testing.T) {
+	e, _, ts := newTestEnv()
+	defer ts.Close()
+
 	req := dbplugin.InitializeRequest{
 		Config: map[string]interface{}{
 			"username": e.Username,
@@ -72,7 +72,10 @@ func (e *UnitTestEnv) TestElasticsearch_Initialize(t *testing.T) {
 	}
 }
 
-func (e *UnitTestEnv) TestElasticsearch_Initialize_OptionalConfig(t *testing.T) {
+func TestElasticsearch_Initialize_OptionalConfig(t *testing.T) {
+	e, _, ts := newTestEnv()
+	defer ts.Close()
+
 	testCases := []struct {
 		configBytes []byte // use raw bytes here so we can vary how we provide the boolean
 		insecureVal bool
@@ -158,7 +161,20 @@ func (e *UnitTestEnv) TestElasticsearch_Initialize_OptionalConfig(t *testing.T) 
 	}
 }
 
-func (e *UnitTestEnv) TestElasticsearch_NewUser(t *testing.T) {
+func TestElasticsearch_NewUser(t *testing.T) {
+	e, api, ts := newTestEnv()
+	defer ts.Close()
+
+	req := dbplugin.InitializeRequest{
+		Config: map[string]interface{}{
+			"username": api.Username(),
+			"password": api.Password(),
+			"url":      ts.URL,
+		},
+		VerifyConnection: true,
+	}
+	dbtesting.AssertInitialize(t, e.Elasticsearch, req)
+
 	statements1 := dbplugin.Statements{
 		Commands: []string{`{"elasticsearch_role_definition": {"indices": [{"names":["*"], "privileges":["read"]}]}}`},
 	}
@@ -192,7 +208,10 @@ func (e *UnitTestEnv) TestElasticsearch_NewUser(t *testing.T) {
 	e.TestUsers[resp2.Username] = statements2
 }
 
-func (e *UnitTestEnv) TestElasticsearch_DeleteUser(t *testing.T) {
+func TestElasticsearch_DeleteUser(t *testing.T) {
+	e, _, ts := newTestEnv()
+	defer ts.Close()
+
 	for username, statements := range e.TestUsers {
 		req := dbplugin.DeleteUserRequest{
 			Username:   username,
@@ -202,14 +221,27 @@ func (e *UnitTestEnv) TestElasticsearch_DeleteUser(t *testing.T) {
 	}
 }
 
-func (e *UnitTestEnv) TestElasticsearch_UpdateUser(t *testing.T) {
-	req := dbplugin.UpdateUserRequest{
+func TestElasticsearch_UpdateUser(t *testing.T) {
+	e, api, ts := newTestEnv()
+	defer ts.Close()
+
+	req := dbplugin.InitializeRequest{
+		Config: map[string]interface{}{
+			"username": api.Username(),
+			"password": api.Password(),
+			"url":      ts.URL,
+		},
+		VerifyConnection: true,
+	}
+	dbtesting.AssertInitialize(t, e.Elasticsearch, req)
+
+	req2 := dbplugin.UpdateUserRequest{
 		Username: e.Username,
 		Password: &dbplugin.ChangePassword{
 			NewPassword: "new password",
 		},
 	}
-	dbtesting.AssertUpdateUser(t, e.Elasticsearch, req)
+	dbtesting.AssertUpdateUser(t, e.Elasticsearch, req2)
 }
 
 func TestElasticsearch_SecretValues(t *testing.T) {
