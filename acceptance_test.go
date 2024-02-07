@@ -26,21 +26,20 @@ import (
 These tests are end-to-end, running from Vault to the real plugin. To run these tests, first make
 a binary of the present code:
 
-$ make dev
+	make dev
 
 Then start Vault with commands like:
 
-$ export VAULT_API_ADDR=http://localhost:8200
-
-	$ vault server -dev \
-		-dev-root-token-id=root \
-		-dev-plugin-dir=$GOPATH/src/github.com/hashicorp/vault-plugin-database-elasticsearch/bin
+	export VAULT_API_ADDR=http://localhost:8200
+	vault server -dev \
+	    -dev-root-token-id=root \
+	    -dev-plugin-dir=$PWD/bin
 
 The last flag automatically adds this plugin to the plugin catalog. Then set the following variables:
 
-$ export VAULT_ACC=1
-$ export VAULT_ADDR=http://localhost:8200
-$ export VAULT_TOKEN=root
+	export VAULT_ACC=1
+	export VAULT_ADDR=http://localhost:8200
+	export VAULT_TOKEN=root
 
 At that point, you'll be able to successfully run the tests.
 
@@ -50,16 +49,16 @@ ES security API that was present in ES version 6.6.1. However, if you _would_ li
 it, Please see README.md and carefully ensure you've set it up properly. Then set the following
 variables
 
-$ export ES_URL=http://localhost:9200
-$ export ES_USERNAME=vault
-$ export ES_PASSWORD=myPa55word
-$ export CA_CERT=/usr/share/ca-certificates/extra/elastic-stack-ca.crt.pem
-$ export CLIENT_CERT=$ES_HOME/config/certs/elastic-certificates.crt.pem
-$ export CLIENT_KEY=$ES_HOME/config/certs/elastic-certificates.key.pem
+	export ES_URL=http://localhost:9200
+	export ES_USERNAME=vault
+	export ES_PASSWORD=myPa55word
+	export CA_CERT=/usr/share/ca-certificates/extra/elastic-stack-ca.crt.pem
+	export CLIENT_CERT=$ES_HOME/config/certs/elastic-certificates.crt.pem
+	export CLIENT_KEY=$ES_HOME/config/certs/elastic-certificates.key.pem
 
 Also create a 'vault' role for Test_ExternallyDefinedRole, ex:
 
-	$ curl \
+	curl \
 	    -k -X POST \
 	    -H "Content-Type: application/json" \
 	    -d '{"cluster": ["manage_security"]}' \
