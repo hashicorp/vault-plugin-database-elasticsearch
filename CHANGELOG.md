@@ -2,6 +2,7 @@
 Improvements:
 * Updated dependencies:
   * `github.com/hashicorp/vault/sdk` v0.10.2 -> v0.11.0
+  * `google.golang.org/protobuf` v1.31.0 -> 1.33.0
 
 ## v0.14.0
 Changes:
