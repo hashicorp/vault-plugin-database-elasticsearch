@@ -1,4 +1,7 @@
 ## Unreleased
+Improvements:
+* Updated dependencies:
+  * `github.com/hashicorp/vault/sdk` v0.10.2 -> v0.11.0
 
 ## v0.14.0
 Changes:
