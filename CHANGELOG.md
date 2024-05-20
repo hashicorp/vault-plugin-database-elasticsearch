@@ -1,4 +1,9 @@
 ## Unreleased
+
+## v0.15.0
+Improvements:
+* Updated dependencies: [GH-85](https://github.com/hashicorp/vault-plugin-database-elasticsearch/pull/85)
+
 Improvements:
 * Updated dependencies:
   * `github.com/hashicorp/vault/sdk` v0.10.2 -> v0.11.0
