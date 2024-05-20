@@ -2,7 +2,13 @@
 
 ## v0.15.0
 Improvements:
-* Updated dependencies: [GH-85](https://github.com/hashicorp/vault-plugin-database-elasticsearch/pull/85)
+* Updated dependencies:
+  * `github.com/hashicorp/vault/sdk` v0.11.0 -> v0.12.0
+  * `github.com/hashicorp/go-retryablehttp` v0.7.5 -> v0.7.6
+  * `github.com/stretchr/testify` v1.8.4 -> v1.9.0
+  * `golang.org/x/net` v0.17.0 -> v0.23.0
+  * `golang.org/x/crypto` v0.17.0 -> v0.21.0
+  * `github.com/docker/docker` v24.0.7 -> v24.0.9
 
 Improvements:
 * Updated dependencies:
