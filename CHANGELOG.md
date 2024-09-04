@@ -1,5 +1,20 @@
 ## Unreleased
 
+## v0.16.0
+Improvements:
+* Updated dependencies:
+  * `github.com/hashicorp/vault/sdk` v0.12.0 -> v0.13.0
+  * `github.com/hashicorp/go-retryablehttp` v0.7.6 -> v0.7.7
+  * `golang.org/x/net` v0.23.0 -> v0.25.0
+  * `golang.org/x/crypto` v0.21.0 -> v0.23.0
+  * `golang.org/x/text` v0.16.0 -> v0.17.0
+  * `golang.org/x/sys` v0.21.0 -> v0.24.0
+  * `golang.org/x/sync` v0.7.0 -> v0.8.0
+  * `github.com/docker/docker` v24.0.9 -> v25.0.6
+  * `google.golang.org/grpc` v1.60.1 -> v1.65.0
+  * `google.golang.org/protobuf` v1.33.0 -> v1.34.1
+  * `github.com/opencontainers/runc` v1.1.12 -> v1.1.14
+
 ## v0.15.0
 Improvements:
 * Updated dependencies:
