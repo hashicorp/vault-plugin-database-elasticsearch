@@ -1,5 +1,15 @@
 ## Unreleased
 
+## v0.17.0
+Improvements:
+* Updated dependencies:
+  * 'golang.org/x/crypto' v0.26.0 => v0.32.0
+  * `golang.org/x/net' v0.28.0 => v0.34.0
+  * 'golang.org/x/sync' v0.8.0 => v0.10.0
+  * `golang.org/x/sys' v0.24.0 => v0.29.0
+  * `golang.org/x/text' v0.17.0 => v0.21.0
+
+
 ## v0.16.0
 Improvements:
 * Updated dependencies:
