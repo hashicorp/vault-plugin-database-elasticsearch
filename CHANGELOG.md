@@ -1,5 +1,13 @@
 ## Unreleased
 
+## v0.18.0
+Improvements:
+* Updated dependencies:
+  * `github.com/hashicorp/vault/sdk` v0.13.0 -> v0.17.0
+  * `github.com/stretchr/testify` v1.9.0 -> v1.10.0
+  * `golang.org/x/net` v0.34.0 -> v0.38.0
+  * `golang.org/x/crypto` v0.32.0 -> v0.36.0
+
 ## v0.17.0
 Improvements:
 * Updated dependencies:
