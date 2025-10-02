@@ -1,6 +1,6 @@
 module github.com/hashicorp/vault-plugin-database-elasticsearch
 
-go 1.25.0
+go 1.25.1
 
 require (
 	github.com/hashicorp/errwrap v1.1.0
