@@ -251,6 +251,7 @@ func prepareTestContainer(t *testing.T, version string) (cleanup func(), client 
 	transport.TLSClientConfig = tlsConf
 	client = cleanhttp.DefaultClient()
 	client.Transport = transport
+	client.Timeout = 10 * time.Second
 
 	retAddress = fmt.Sprintf("https://localhost:%s", resource.GetPort("9200/tcp"))
 
