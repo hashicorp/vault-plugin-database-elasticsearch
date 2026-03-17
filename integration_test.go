@@ -462,6 +462,7 @@ func (e *ElasticSearchEnv) createVaultRole(t *testing.T) {
 	if err := e.do(req, nil); err != nil {
 		t.Fatalf("failed to create the vault role: %s", err)
 	}
+
 }
 
 func (e *ElasticSearchEnv) CreateVaultUser(t *testing.T) {
