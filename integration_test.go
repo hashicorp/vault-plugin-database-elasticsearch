@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -222,6 +223,7 @@ func prepareTestContainer(t *testing.T, version string) (cleanup func(), client 
 		"xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/rootCA.pem",
 		"xpack.security.http.ssl.client_authentication=required",
 		"ELASTIC_PASSWORD=" + esInitialPassword,
+		"node.store.allow_mmap=false",
 	}
 
 	// Add ES 8.x specific settings
@@ -230,11 +232,12 @@ func prepareTestContainer(t *testing.T, version string) (cleanup func(), client 
 	}
 
 	dockerOptions := &dockertest.RunOptions{
-		Repository: "docker.elastic.co/elasticsearch/elasticsearch",
-		Tag:        version,
-		WorkingDir: "/usr/share/elasticsearch/",
-		Mounts:     []string{certsdir + ":/usr/share/elasticsearch/config/certificates"},
-		Env:        env,
+		Repository:   "docker.elastic.co/elasticsearch/elasticsearch",
+		Tag:          version,
+		WorkingDir:   "/usr/share/elasticsearch/",
+		Mounts:       []string{certsdir + ":/usr/share/elasticsearch/config/certificates"},
+		Env:          env,
+		ExposedPorts: []string{"9200/tcp"},
 	}
 	resource, err := pool.RunWithOptions(dockerOptions)
 	if err != nil {
@@ -277,6 +280,9 @@ func prepareTestContainer(t *testing.T, version string) (cleanup func(), client 
 		_, err = ioutil.ReadAll(resp.Body)
 		return err
 	}); err != nil {
+		cmd := exec.Command("docker", "logs", resource.Container.ID)
+		out, _ := cmd.CombinedOutput()
+		fmt.Printf("\n=== ELASTICSEARCH DOCKER LOGS ===\n%s\n=================================\n", string(out))
 		cleanup()
 		t.Fatalf("Could not connect to docker: %s", err)
 	}
