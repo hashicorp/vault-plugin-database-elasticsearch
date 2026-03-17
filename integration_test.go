@@ -213,6 +213,7 @@ func prepareTestContainer(t *testing.T, version string) (cleanup func(), client 
 
 	env := []string{
 		"discovery.type=single-node",
+		"network.host=0.0.0.0", 
 		"xpack.security.enabled=true",
 		"xpack.license.self_generated.type=trial",
 		"xpack.security.http.ssl.enabled=true",
@@ -251,7 +252,6 @@ func prepareTestContainer(t *testing.T, version string) (cleanup func(), client 
 	transport.TLSClientConfig = tlsConf
 	client = cleanhttp.DefaultClient()
 	client.Transport = transport
-	client.Timeout = 30 * time.Second
 
 	retAddress = fmt.Sprintf("https://localhost:%s", resource.GetPort("9200/tcp"))
 
