@@ -253,7 +253,7 @@ func prepareTestContainer(t *testing.T, version string) (cleanup func(), client 
 	client = cleanhttp.DefaultClient()
 	client.Transport = transport
 
-	retAddress = fmt.Sprintf("https://localhost:%s", resource.GetPort("9200/tcp"))
+	retAddress = fmt.Sprintf("https://127.0.0.1:%s", resource.GetPort("9200/tcp"))
 
 	if err := pool.Retry(func() error {
 		var err error
