@@ -231,8 +231,10 @@ func prepareTestContainer(t *testing.T, version string) (cleanup func(), client 
 			"xpack.security.transport.ssl.enabled=false",
 			"xpack.security.autoconfiguration.enabled=false",
 			"node.store.allow_mmap=false",
-			// -Djdk.cgroup.version=1 fix the Java 17 cgroups v2 NullPointerException
-			"ES_JAVA_OPTS=-Xms512m -Xmx512m -Djdk.cgroup.version=1",
+			// ES_JAVA_OPTS applies to the main Elasticsearch process
+			"ES_JAVA_OPTS=-Xms512m -Xmx512m",
+			// JAVA_TOOL_OPTIONS forces the pre-flight CLI tools to bypass the cgroups bug
+			"JAVA_TOOL_OPTIONS=-XX:-UseContainerSupport -Djdk.cgroup.version=1",
 		)
 	}
 
