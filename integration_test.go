@@ -37,7 +37,7 @@ const (
 )
 
 func TestIntegration_Container(t *testing.T) {
-	versions := []string{"6.8.13", "7.9.1", "8.1.3"}
+	versions := []string{"6.8.13", "7.9.1", "8.11.3"}
 	for _, version := range versions {
 		t.Run(version, func(t *testing.T) {
 			cleanup, client, retAddress := prepareTestContainer(t, version)
@@ -231,10 +231,7 @@ func prepareTestContainer(t *testing.T, version string) (cleanup func(), client 
 			"xpack.security.transport.ssl.enabled=false",
 			"xpack.security.autoconfiguration.enabled=false",
 			"node.store.allow_mmap=false",
-			// ES_JAVA_OPTS applies to the main Elasticsearch process
 			"ES_JAVA_OPTS=-Xms512m -Xmx512m",
-			// JAVA_TOOL_OPTIONS forces the pre-flight CLI tools to bypass the cgroups bug
-			"JAVA_TOOL_OPTIONS=-XX:-UseContainerSupport -Djdk.cgroup.version=1",
 		)
 	}
 
