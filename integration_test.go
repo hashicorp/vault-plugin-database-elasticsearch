@@ -214,7 +214,7 @@ func prepareTestContainer(t *testing.T, version string) (cleanup func(), client 
 
 	env := []string{
 		"discovery.type=single-node",
-		"network.host=0.0.0.0",
+		// "network.host=0.0.0.0",
 		"xpack.security.enabled=true",
 		"xpack.license.self_generated.type=trial",
 		"xpack.security.http.ssl.enabled=true",
