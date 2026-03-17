@@ -223,12 +223,17 @@ func prepareTestContainer(t *testing.T, version string) (cleanup func(), client 
 		"xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/rootCA.pem",
 		"xpack.security.http.ssl.client_authentication=required",
 		"ELASTIC_PASSWORD=" + esInitialPassword,
-		"node.store.allow_mmap=false",
 	}
 
 	// Add ES 8.x specific settings
 	if strings.HasPrefix(version, "8.") {
-		env = append(env, "xpack.security.transport.ssl.enabled=false")
+		env = append(env,
+			"xpack.security.transport.ssl.enabled=false",
+			"xpack.security.autoconfiguration.enabled=false",
+			"node.store.allow_mmap=false",
+			// -Djdk.cgroup.version=1 fix the Java 17 cgroups v2 NullPointerException
+			"ES_JAVA_OPTS=-Xms512m -Xmx512m -Djdk.cgroup.version=1",
+		)
 	}
 
 	dockerOptions := &dockertest.RunOptions{
