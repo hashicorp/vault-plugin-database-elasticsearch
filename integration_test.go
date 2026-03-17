@@ -224,6 +224,11 @@ func prepareTestContainer(t *testing.T, version string) (cleanup func(), client 
 		"ELASTIC_PASSWORD=" + esInitialPassword,
 	}
 
+	// Add ES 8.x specific settings
+	if strings.HasPrefix(version, "8.") {
+		env = append(env, "xpack.security.transport.ssl.enabled=false")
+	}
+
 	dockerOptions := &dockertest.RunOptions{
 		Repository: "docker.elastic.co/elasticsearch/elasticsearch",
 		Tag:        version,
