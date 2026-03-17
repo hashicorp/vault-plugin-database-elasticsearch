@@ -36,7 +36,7 @@ const (
 )
 
 func TestIntegration_Container(t *testing.T) {
-	versions := []string{"6.8.13", "7.9.1", "8.1.3"}
+	versions := []string{"6.8.13", "7.9.1", "8.11.3"}
 	for _, version := range versions {
 		t.Run(version, func(t *testing.T) {
 			cleanup, client, retAddress := prepareTestContainer(t, version)
