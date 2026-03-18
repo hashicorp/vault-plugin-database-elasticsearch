@@ -3,7 +3,7 @@
 ### March 16, 2026
 
 IMPROVEMENTS:
-* Updated dependencies:
+* Updated dependencies (#119):
   * go 1.25.1 => 1.26.1
   * github.com/hashicorp/vault/sdk v0.19.0 => v0.23.0
   * golang.org/x/text v0.27.0 => v0.31.0
