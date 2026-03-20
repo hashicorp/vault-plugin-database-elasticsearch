@@ -3,7 +3,7 @@
 ### March 20, 2026
 
 IMPROVEMENTS:
-* Updated dependencies ():
+* Updated dependencies (#124):
   * google.golang.org/genproto/googleapis/rpc v0.0.0-20250207221924-e9438ea467c6 => v0.0.0-20251202230838-ff82c1b0f217
   * github.com/hashicorp/vault/sdk v0.23.0 => v0.24.0
   * golang.org/x/text v0.31.0 => v0.32.0
