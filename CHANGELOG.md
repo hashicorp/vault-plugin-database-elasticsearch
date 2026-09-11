@@ -4,7 +4,6 @@
 * chore: automated Go/dependency update via vault-plugin-release (#128)
 * updated crypto to 0.54 to address secvuln (#127)
 
-## Unreleased
 ## v0.20.1
 ### March 20, 2026
 
