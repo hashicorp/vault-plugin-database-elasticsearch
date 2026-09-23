@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"path"
 
+	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/hashicorp/go-rootcerts"
 )
@@ -90,7 +91,9 @@ func NewClient(config *ClientConfig) (*Client, error) {
 			}
 		}
 
-		client.HTTPClient.Transport = &http.Transport{TLSClientConfig: conf}
+		transport := cleanhttp.DefaultTransport()
+		transport.TLSClientConfig = conf
+		client.HTTPClient.Transport = transport
 	}
 	c := &Client{
 		username:     config.Username,
